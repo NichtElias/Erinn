@@ -12,8 +12,8 @@ class Board {
     val pieces: Array<Piece> = Array(64) { _ -> Piece.NONE }
 
     fun place(piece: Piece, square: Square) {
-        val pieceIdx = piece.type().value
-        val colorIdx = piece.color().value ushr 3
+        val pieceIdx = piece.type().idx()
+        val colorIdx = piece.color().idx()
         piecesBB[pieceIdx] = piecesBB[pieceIdx] or square.bb()
         colorsBB[colorIdx] = colorsBB[colorIdx] or square.bb()
 
@@ -21,6 +21,87 @@ class Board {
             kingSquares[colorIdx] = square
 
         pieces[square.value] = piece
+    }
+
+    // remove piece on square, either because it moved elsewhere or it was captured
+    fun remove(square: Square) {
+        val pieceIdx = pieces[square.value].type().idx()
+        val colorIdx = pieces[square.value].color().idx()
+        piecesBB[pieceIdx] = piecesBB[pieceIdx] and square.bb().inv()
+        colorsBB[colorIdx] = colorsBB[colorIdx] and square.bb().inv()
+
+        pieces[square.value] = Piece.NONE
+    }
+
+    fun doMove(move: Move) {
+        val movingPiece = pieces[move.src.value]
+        val movingColor = movingPiece.color()
+        val movingType = movingPiece.type()
+
+        assert(movingType != PieceType.NONE)
+
+        // increment half moves
+        halfMoves++
+
+        // capture
+        if (pieces[move.dst.value] != Piece.NONE || move.dst == epSquare) {
+            var capturedSquare = move.dst
+
+            // en passant
+            if (movingType == PieceType.PAWN && move.dst == epSquare) {
+                capturedSquare = capturedSquare.enPassantActualCapture()
+            }
+
+            remove(capturedSquare)
+
+            halfMoves = 0
+        }
+
+        if (movingType == PieceType.PAWN) halfMoves = 0
+
+        // set ep square
+        epSquare = if (movingType == PieceType.PAWN
+            && (move.src.bb() and (Bitboards.RANK_2 or Bitboards.RANK_7)) != 0L // from 2nd or 7th rank
+            && (move.dst.bb() and (Bitboards.RANK_4 or Bitboards.RANK_5)) != 0L
+        ) {
+            move.src.enPassantActualCapture() // enPassantActualCapture not used for intended purpose here
+        } else {
+            Square(-1)
+        }
+
+        // special cases for the king
+        if (movingType == PieceType.KING) {
+            // update castling rights when king moves
+            castlingRights = castlingRights and (if (movingColor == Color.WHITE) Bitboards.RANK_1.inv() else Bitboards.RANK_8.inv())
+
+            // move rooks when castling
+            for (i in 0..3) {
+                if (move.src == Square.KING_STARTS[i / 2]
+                    && move.dst == Square.CASTLING_TARGET_SQUARES[i]
+                ) {
+                    place(Piece(movingColor, PieceType.ROOK), Square.CASTLING_ROOK_TARGET_SQUARES[i])
+                    remove(Square.CASTLING_ROOK_SQUARES[i])
+                }
+            }
+        }
+
+        // update castling rights if anything happens with the rooks
+        castlingRights = castlingRights and move.src.bb().inv() and move.dst.bb().inv()
+
+        // take piece from src square
+        remove(move.src)
+
+        // put piece on dst square
+        if (move.promotion == PieceType.NONE) {
+            place(movingPiece, move.dst)
+        } else {
+            // promote
+            place(Piece(movingColor, move.promotion), move.dst)
+        }
+
+        // bookkeeping
+        turn = turn.opponent()
+        fullMoves += if (turn == Color.BLACK) 1 else 0
     }
 
     override fun toString(): String {
@@ -55,7 +136,7 @@ class Board {
 
                 for (c in ranks[7 - ri]) {
                     if (c in '1'..'8') {
-                        fi += c - '1'
+                        fi += c - '0'
                     } else if (c in 'a'..'z' || c in 'A'..'Z') {
                         board.place(Piece.fromSymbol(c), Square(ri, fi))
                         fi++

@@ -1,6 +1,8 @@
 package party.elias.uci
 
+import party.elias.Board
 import party.elias.Engine
+import party.elias.Move
 
 fun run() {
 
@@ -31,7 +33,31 @@ fun run() {
 
         } else if (cmd[0] == "position") {
 
-            // TODO
+            var i = 1
+            if (cmd[i] == "startpos") {
+                engine.position = Board.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                i++
+            } else if (cmd[i] == "fen") {
+                i++
+                val fenString = StringBuilder()
+                while (i < cmd.size && cmd[i] != "moves") {
+                    if (!fenString.isEmpty()) {
+                        fenString.append(" ")
+                    }
+                    fenString.append(cmd[i])
+                    i++
+                }
+
+                engine.position = Board.fromFen(fenString.toString())
+            }
+
+            if (i < cmd.size && cmd[i] == "moves") {
+                i++
+
+                while (i < cmd.size) {
+                    engine.position.doMove(Move.fromUci(cmd[i++]))
+                }
+            }
 
         } else if (cmd[0] == "go") {
 
@@ -43,7 +69,7 @@ fun run() {
 
         } else if (cmd[0] == "show") { // nonstandard
 
-            print(engine.current.toString())
+            print(engine.position.toString())
 
         }
     }

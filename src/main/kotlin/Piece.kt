@@ -3,6 +3,7 @@ package party.elias
 @JvmInline
 value class Color(val value: Int) { // WHITE = 0b1000, BLACK = 0b0000
     fun opponent(): Color = Color(value.inv() and 8)
+    fun idx(): Int = value ushr 3
 
     override fun toString(): String {
         return when (this) {
@@ -20,6 +21,8 @@ value class Color(val value: Int) { // WHITE = 0b1000, BLACK = 0b0000
 
 @JvmInline
 value class PieceType(val value: Int) { // ...0ttt
+    fun idx(): Int = value
+
     companion object {
         val PAWN: PieceType   = PieceType(0b0000)
         val BISHOP: PieceType = PieceType(0b0001)
