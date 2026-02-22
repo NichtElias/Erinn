@@ -1,7 +1,5 @@
 package party.elias
 
-import kotlin.math.max
-
 class Board {
     val piecesBB: BitboardArray = BitboardArray(6)
     val colorsBB: BitboardArray = BitboardArray(2)
@@ -149,6 +147,21 @@ class Board {
 
     fun genMoves(): List<Move> {
         val moves = ArrayList<Move>()
+
+        for (i in 0..<pieces.size) {
+            val piece = pieces[i]
+            if (piece.color() == turn) {
+                when (piece.type()) {
+                    PieceType.KNIGHT -> {
+                        Bitboards.forAllSquares(
+                            Bitboards.KNIGHT_ATTACKS[i] and colorsBB[piece.color().idx()].inv()
+                        ) { square ->
+                            moves.add(Move(Square(i), square, pieces[square.value]))
+                        }
+                    }
+                }
+            }
+        }
 
         return moves
     }

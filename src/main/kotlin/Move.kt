@@ -1,6 +1,13 @@
 package party.elias
 
-data class Move(val src: Square, val dst: Square, val promotion: PieceType, val capture: Piece, val isEp: Boolean, val castle: Int) {
+data class Move(
+    val src: Square,
+    val dst: Square,
+    val capture: Piece,
+    val promotion: PieceType = PieceType.NONE,
+    val isEp: Boolean = false,
+    val castle: Int = -1
+) {
     fun toUci(): String {
         val srcUci = src.toUci()
         val dstUci = dst.toUci()
@@ -33,7 +40,7 @@ data class Move(val src: Square, val dst: Square, val promotion: PieceType, val 
                 }
             }
 
-            return Move(src, dst, promotion, capture, isEp, castle)
+            return Move(src, dst, capture, promotion, isEp, castle)
         }
     }
 }

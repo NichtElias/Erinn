@@ -3,19 +3,25 @@ package party.elias
 @JvmInline
 value class Square(val value: Int) {
     constructor(rank: Int, file: Int) : this(rank * 8 + file)
+    val rank: Int get() = value ushr 3
+    val file: Int get() = value and 7
 
     fun bb(): Bitboard {
         return 1L shl value
     }
 
     fun toUci(): String {
-        val file = 'a' + (value and 7)
-        val rank = '1' + (value ushr 3)
+        val file = 'a' + file
+        val rank = '1' + rank
         return "$file$rank"
     }
 
     fun enPassantActualCapture(): Square {
         return if (value < 32) Square(value + 8) else Square(value - 8)
+    }
+
+    override fun toString(): String {
+        return toUci()
     }
 
     companion object {

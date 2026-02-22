@@ -42,6 +42,10 @@ value class Piece(val value: Int) { // ...cttt, t = type, c = color
     fun type(): PieceType = PieceType(value and 7)
     fun color(): Color = Color(value and 8)
 
+    override fun toString(): String {
+        return "${SYMBOL_MAP[this]}"
+    }
+
     companion object {
         val SYMBOL_MAP = mapOf(
             Piece(0) to 'p',
