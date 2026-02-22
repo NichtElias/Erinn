@@ -35,7 +35,7 @@ fun run() {
 
             var i = 1
             if (cmd[i] == "startpos") {
-                engine.position = Board.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                engine.position = Board.startPos()
                 i++
             } else if (cmd[i] == "fen") {
                 i++
@@ -55,7 +55,7 @@ fun run() {
                 i++
 
                 while (i < cmd.size) {
-                    engine.position.doMove(Move.fromUci(cmd[i++]))
+                    engine.position.doMove(Move.fromUci(cmd[i++], engine.position))
                 }
             }
 

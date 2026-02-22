@@ -1,6 +1,6 @@
 package party.elias
 
-data class Move(val src: Square, val dst: Square, val promotion: PieceType) {
+data class Move(val src: Square, val dst: Square, val promotion: PieceType, val capture: Piece, val isEp: Boolean, val castle: Int) {
     fun toUci(): String {
         val srcUci = src.toUci()
         val dstUci = dst.toUci()
@@ -11,15 +11,29 @@ data class Move(val src: Square, val dst: Square, val promotion: PieceType) {
     }
 
     companion object {
-        fun fromUci(uciMove: String): Move {
+        fun fromUci(uciMove: String, position: Board): Move {
             assert(uciMove.length in 4..5)
 
             val src = Square.parseUci(uciMove.substring(0..1))
             val dst = Square.parseUci(uciMove.substring(2..3))
-
             val promotion: PieceType = if (uciMove.length > 4) Piece.fromSymbol(uciMove[4]).type() else PieceType.NONE
 
-            return Move(src, dst, promotion)
+            val movingPiece = position.pieces[src.value]
+
+            val isEp = dst == position.epSquare && movingPiece.type() == PieceType.PAWN
+            val capture = position.pieces[(if (isEp) dst.enPassantActualCapture() else dst).value]
+
+            var castle = -1
+
+            for (i in 0..3) {
+                if (src == Square.KING_STARTS[i / 2]
+                    && dst == Square.CASTLING_TARGET_SQUARES[i]
+                ) {
+                    castle = i
+                }
+            }
+
+            return Move(src, dst, promotion, capture, isEp, castle)
         }
     }
 }

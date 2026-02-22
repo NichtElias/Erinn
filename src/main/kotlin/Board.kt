@@ -1,5 +1,7 @@
 package party.elias
 
+import kotlin.math.max
+
 class Board {
     val piecesBB: BitboardArray = BitboardArray(6)
     val colorsBB: BitboardArray = BitboardArray(2)
@@ -33,7 +35,9 @@ class Board {
         pieces[square.value] = Piece.NONE
     }
 
-    fun doMove(move: Move) {
+    fun doMove(move: Move): StateInfo {
+        val stateInfo = StateInfo(castlingRights, epSquare, halfMoves) // save some info for undoing the move
+
         val movingPiece = pieces[move.src.value]
         val movingColor = movingPiece.color()
         val movingType = movingPiece.type()
@@ -44,14 +48,14 @@ class Board {
         halfMoves++
 
         // capture
-        if (pieces[move.dst.value] != Piece.NONE || move.dst == epSquare) {
+        if (move.capture != Piece.NONE) {
             var capturedSquare = move.dst
 
-            // en passant
-            if (movingType == PieceType.PAWN && move.dst == epSquare) {
+            if (move.isEp) {
                 capturedSquare = capturedSquare.enPassantActualCapture()
             }
 
+            // remove captured piece
             remove(capturedSquare)
 
             halfMoves = 0
@@ -75,13 +79,9 @@ class Board {
             castlingRights = castlingRights and (if (movingColor == Color.WHITE) Bitboards.RANK_1.inv() else Bitboards.RANK_8.inv())
 
             // move rooks when castling
-            for (i in 0..3) {
-                if (move.src == Square.KING_STARTS[i / 2]
-                    && move.dst == Square.CASTLING_TARGET_SQUARES[i]
-                ) {
-                    place(Piece(movingColor, PieceType.ROOK), Square.CASTLING_ROOK_TARGET_SQUARES[i])
-                    remove(Square.CASTLING_ROOK_SQUARES[i])
-                }
+            if (move.castle != -1) {
+                place(Piece(movingColor, PieceType.ROOK), Square.CASTLING_ROOK_TARGET_SQUARES[move.castle])
+                remove(Square.CASTLING_ROOK_SQUARES[move.castle])
             }
         }
 
@@ -100,8 +100,57 @@ class Board {
         }
 
         // bookkeeping
-        turn = turn.opponent()
         fullMoves += if (turn == Color.BLACK) 1 else 0
+        turn = turn.opponent()
+
+        return stateInfo
+    }
+
+    fun undoMove(move: Move, stateInfo: StateInfo) {
+        val movedPiece = pieces[move.dst.value]
+        val movedColor = movedPiece.color()
+        val movedType = movedPiece.type()
+
+        // bookkeeping
+        turn = turn.opponent()
+        fullMoves -= if (turn == Color.BLACK) 1 else 0
+
+        // put piece back on src square
+        if (move.promotion == PieceType.NONE) {
+            place(movedPiece, move.src)
+        } else {
+            // un-promote
+            place(Piece(movedColor, PieceType.PAWN), move.src)
+        }
+
+        // revert castling rook movement
+        if (move.castle != -1) {
+            place(Piece(movedColor, PieceType.ROOK), Square.CASTLING_ROOK_SQUARES[move.castle])
+            remove(Square.CASTLING_ROOK_TARGET_SQUARES[move.castle])
+        }
+
+        // capture
+        if (move.capture != Piece.NONE) {
+            var capturedSquare = move.dst
+
+            if (move.isEp) {
+                capturedSquare = capturedSquare.enPassantActualCapture()
+            }
+
+            // place captured piece back
+            place(move.capture, capturedSquare)
+        }
+
+        // restore from StateInfo
+        castlingRights = stateInfo.castlingRights
+        epSquare = stateInfo.epSquare
+        halfMoves = stateInfo.halfMoves
+    }
+
+    fun genMoves(): List<Move> {
+        val moves = ArrayList<Move>()
+
+        return moves
     }
 
     override fun toString(): String {
@@ -175,5 +224,11 @@ class Board {
 
             return board
         }
+
+        fun startPos(): Board {
+            return fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        }
     }
+
+    class StateInfo(val castlingRights: Long, val epSquare: Square, val halfMoves: Int)
 }
