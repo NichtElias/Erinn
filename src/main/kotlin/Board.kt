@@ -155,56 +155,75 @@ class Board {
 
         for (i in 0..<pieces.size) {
             val piece = pieces[i]
+            val src = Square(i)
             if (piece.color() == turn) {
                 when (piece.type()) {
                     PieceType.KNIGHT -> {
                         // knight moves and attacks
                         Bitboards.forAllSquares(
-                            Bitboards.KNIGHT_ATTACKS[i] and colorsBB[turn.idx()].inv()
+                            MoveGen.KNIGHT_ATTACKS[i] and colorsBB[turn.idx()].inv()
                         ) { square ->
-                            moves.add(Move(Square(i), square, pieces[square.value]))
+                            moves.add(Move(src, square, pieces[square.value]))
                         }
                     }
 
                     PieceType.PAWN -> {
                         // normal pawn attacks
                         Bitboards.forAllSquares(
-                            Bitboards.INDEXED_PAWN_ATTACKS[turn.idx()][i] and colorsBB[turn.opponent().idx()]
+                            MoveGen.INDEXED_PAWN_ATTACKS[turn.idx()][i] and colorsBB[turn.opponent().idx()]
                         ) { square ->
-                            moves.add(Move(Square(i), square, pieces[square.value]))
+                            if (square.rank == turn.opponent().backRank()) {
+                                moves.add(Move(src, square, pieces[square.value], promotion = PieceType.QUEEN))
+                                moves.add(Move(src, square, pieces[square.value], promotion = PieceType.KNIGHT))
+                                moves.add(Move(src, square, pieces[square.value], promotion = PieceType.ROOK))
+                                moves.add(Move(src, square, pieces[square.value], promotion = PieceType.BISHOP))
+                            } else {
+                                moves.add(Move(src, square, pieces[square.value]))
+                            }
                         }
                         // pawn moves
-                        Bitboards.forAllSquares(
-                            Bitboards.INDEXED_PAWN_MOVES[turn.idx()][i] and occupiedBB.inv()
-                        ) { square ->
-                            moves.add(Move(Square(i), square, Piece.NONE))
+                        val front = Square(i + MoveGen.PAWN_DIRECTIONS[turn.idx()])
+                        if (pieces[front.value] == Piece.NONE) {
+                            if (front.rank == turn.opponent().backRank()) {
+                                moves.add(Move(src, front, Piece.NONE, promotion = PieceType.QUEEN))
+                                moves.add(Move(src, front, Piece.NONE, promotion = PieceType.KNIGHT))
+                                moves.add(Move(src, front, Piece.NONE, promotion = PieceType.ROOK))
+                                moves.add(Move(src, front, Piece.NONE, promotion = PieceType.BISHOP))
+                            } else {
+                                moves.add(Move(src, front, Piece.NONE))
+                            }
+
+                            val doublePushSquare = Square(i + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
+                            if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
+                                moves.add(Move(src, doublePushSquare, Piece.NONE))
+                            }
                         }
                     }
 
                     PieceType.KING -> {
                         // normal king moves and attacks
                         Bitboards.forAllSquares(
-                            Bitboards.KING_ATTACKS[i] and colorsBB[turn.idx()].inv()
+                            MoveGen.KING_ATTACKS[i] and colorsBB[turn.idx()].inv()
                         ) { square ->
-                            moves.add(Move(Square(i), square, pieces[square.value]))
+                            moves.add(Move(src, square, pieces[square.value]))
                         }
                     }
 
                     PieceType.BISHOP, PieceType.QUEEN -> {
                         // bishop moves and attacks
                         Bitboards.forAllSquares(
-                            Bitboards.slidingMoves(Square(i), occupiedBB, Bitboards.BISHOP_RELATIVE_MOVEMENTS) and colorsBB[turn.idx()].inv()
+                            MoveGen.slidingMoves(src, occupiedBB, MoveGen.BISHOP_RELATIVE_MOVEMENTS) and colorsBB[turn.idx()].inv()
                         ) { square ->
-                            moves.add(Move(Square(i), square, pieces[square.value]))
+                            moves.add(Move(src, square, pieces[square.value]))
                         }
                     }
 
                     PieceType.ROOK, PieceType.QUEEN -> {
                         // rook moves and attacks
                         Bitboards.forAllSquares(
-                            Bitboards.slidingMoves(Square(i), occupiedBB, Bitboards.ROOK_RELATIVE_MOVEMENTS) and colorsBB[turn.idx()].inv()
+                            MoveGen.slidingMoves(src, occupiedBB, MoveGen.ROOK_RELATIVE_MOVEMENTS) and colorsBB[turn.idx()].inv()
                         ) { square ->
-                            moves.add(Move(Square(i), square, pieces[square.value]))
+                            moves.add(Move(src, square, pieces[square.value]))
                         }
                     }
                 }
