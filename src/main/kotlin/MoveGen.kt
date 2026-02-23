@@ -51,27 +51,6 @@ object MoveGen {
         return bb
     }
 
-    val WHITE_PAWN_MOVES: LongArray = LongArray(64) { idx -> pawnMoves(Square(idx), Color.WHITE) }
-    val BLACK_PAWN_MOVES: LongArray = LongArray(64) { idx -> pawnMoves(Square(idx), Color.BLACK) }
-
-    val INDEXED_PAWN_MOVES: Array<LongArray> = arrayOf(BLACK_PAWN_MOVES, WHITE_PAWN_MOVES)
-
-    private fun pawnMoves(sq: Square, color: Color): Long {
-        var bb = 0L
-
-        val movingDirection = if (color == Color.BLACK) -1 else 1
-
-        if (sq.rank != color.opponent().backRank()) {
-            bb = bb or Square(sq.rank + movingDirection, sq.file).bb()
-
-            if (sq.rank == color.pawnStartingRank()) {
-                bb = bb or Square(sq.rank + 2 * movingDirection, sq.file).bb()
-            }
-        }
-
-        return bb
-    }
-
     val PAWN_DIRECTIONS: IntArray = arrayOf(-8, 8).toIntArray() // these are square offsets, indexed by color
 
     val ROOK_RELATIVE_MOVEMENTS: Array<Pair<Int, Int>> = arrayOf(Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1))
