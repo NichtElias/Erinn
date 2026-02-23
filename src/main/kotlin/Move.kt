@@ -18,6 +18,8 @@ data class Move(
     }
 
     companion object {
+        val NULL_MOVE = Move(Square(0), Square(0), Piece.NONE)
+
         fun fromUci(uciMove: String, position: Board): Move {
             assert(uciMove.length in 4..5)
 

@@ -6,6 +6,7 @@ value class Color(val value: Int) { // WHITE = 0b1000, BLACK = 0b0000
     fun idx(): Int = value ushr 3
     fun backRank(): Int = if (this == BLACK) 7 else 0
     fun pawnStartingRank(): Int = if (this == BLACK) 6 else 1
+    fun scoreFactor(): Int = if (this == BLACK) -1 else 1
 
     override fun toString(): String {
         return when (this) {

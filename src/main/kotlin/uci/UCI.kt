@@ -75,6 +75,21 @@ fun run() {
                 println()
                 println("Nodes searched: $total")
                 println()
+            } else {
+
+                var depthLimit = 64
+
+                var i = 1
+                while (i < cmd.size) {
+                    when (cmd[i]) {
+                        "depth" -> depthLimit = cmd[++i].toInt()
+                    }
+                    i++
+                }
+
+                val (move, score) = engine.search(depthLimit)
+
+                println("bestmove ${move.toUci()} $score")
             }
 
         } else if (cmd[0] == "stop") {

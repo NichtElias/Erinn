@@ -1,8 +1,59 @@
 package party.elias
 
+typealias Score = Int
+
 class Engine {
 
     var position: Board = Board.startPos()
+
+    fun evaluate(): Score {
+        var whiteMaterial = 0
+        whiteMaterial += (position.piecesBB[PieceType.PAWN.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 100
+        whiteMaterial += (position.piecesBB[PieceType.BISHOP.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 300
+        whiteMaterial += (position.piecesBB[PieceType.KNIGHT.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 300
+        whiteMaterial += (position.piecesBB[PieceType.ROOK.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 500
+        whiteMaterial += (position.piecesBB[PieceType.QUEEN.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 1000
+        whiteMaterial += (position.piecesBB[PieceType.KING.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 400
+
+        var blackMaterial = 0
+        blackMaterial += (position.piecesBB[PieceType.PAWN.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 100
+        blackMaterial += (position.piecesBB[PieceType.BISHOP.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 300
+        blackMaterial += (position.piecesBB[PieceType.KNIGHT.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 300
+        blackMaterial += (position.piecesBB[PieceType.ROOK.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 500
+        blackMaterial += (position.piecesBB[PieceType.QUEEN.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 1000
+        blackMaterial += (position.piecesBB[PieceType.KING.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 400
+
+        return (whiteMaterial - blackMaterial) * position.turn.scoreFactor()
+    }
+
+    fun search(remainingDepth: Int, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Pair<Move, Score> {
+        var alpha = alpha
+        if (remainingDepth == 0) return Pair(Move.NULL_MOVE, evaluate())
+
+        val moves = position.genMoves()
+        var bestScore: Score = -MATE_SCORE
+        var bestMove: Move = Move.NULL_MOVE
+
+        for (move in moves) {
+            val stateInfo = position.doMove(move)
+            val (_, negScore) = search(remainingDepth - 1, -beta, -alpha)
+            val score = -negScore
+            position.undoMove(move, stateInfo)
+
+            if (score > bestScore) {
+                bestScore = score
+                bestMove = move
+                if (score > alpha) {
+                    alpha = score
+                }
+            }
+            if (score >= beta) {
+                return Pair(bestMove, bestScore)
+            }
+        }
+
+        return Pair(bestMove, bestScore)
+    }
 
     fun perft(depth: Int): Long {
         val moves = position.genMoves()
@@ -36,4 +87,7 @@ class Engine {
         return results
     }
 
+    companion object {
+        const val MATE_SCORE: Score = 32000
+    }
 }
