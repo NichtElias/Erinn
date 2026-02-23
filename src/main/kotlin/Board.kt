@@ -313,7 +313,7 @@ class Board {
         if (castlingRights and Bitboards.A1 != 0L) sb.append("Q")
         if (castlingRights and Bitboards.H1 != 0L) sb.append("k")
         if (castlingRights and Bitboards.A1 != 0L) sb.append("q")
-        if (castlingRights == 0L) sb.append("-")
+        if (castlingRights and Bitboards.CASTLING_ALL == 0L) sb.append("-")
 
         sb.append(" ")
         // 4th Part: en passant square
