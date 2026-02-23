@@ -26,9 +26,41 @@ class Engine {
         return (whiteMaterial - blackMaterial) * position.turn.scoreFactor()
     }
 
-    fun search(remainingDepth: Int, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Pair<Move, Score> {
+    fun qSearch(alpha: Score, beta: Score): Score {
         var alpha = alpha
-        if (remainingDepth == 0) return Pair(Move.NULL_MOVE, evaluate())
+        var bestScore = evaluate()
+
+        if (bestScore >= beta) return bestScore
+        if (bestScore > alpha) alpha = bestScore
+
+        val captures = position.genMoves(capturesOnly = true)
+
+        for (move in captures.sortedWith { moveA, moveB ->
+            val vDiff = moveB.capture.type().idx() - moveA.capture.type().idx() // works because they're ordered by importance
+
+            if (vDiff != 0) return@sortedWith vDiff
+
+            return@sortedWith position.pieces[moveA.src.value].type().idx() - position.pieces[moveB.src.value].type().idx()
+        }) {
+            val stateInfo = position.doMove(move)
+            val score = -qSearch(-beta, -alpha)
+            position.undoMove(move, stateInfo)
+
+            if (score >= beta)
+                return score
+            if (score > alpha)
+                alpha = score
+            if (score > bestScore)
+                bestScore = score
+        }
+
+        return bestScore
+    }
+
+    fun search(remainingDepth: Int, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Pair<Move, Score> {
+        if (remainingDepth == 0) return Pair(Move.NULL_MOVE, qSearch(alpha, beta))
+
+        var alpha = alpha
 
         val moves = position.genMoves()
         var bestScore: Score = -MATE_SCORE

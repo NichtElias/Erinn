@@ -35,6 +35,8 @@ value class PieceType(val value: Int) { // ...0ttt
         val KING: PieceType   = PieceType(0b0101)
 
         val NONE: PieceType   = PieceType(0b0111)
+
+        val VALUES: IntArray = intArrayOf(100, 300, 300, 500, 1000, 400)
     }
 }
 

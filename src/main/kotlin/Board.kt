@@ -173,7 +173,7 @@ class Board {
         } || MoveGen.KING_ATTACKS[kingSquares[color.idx()].value] and squares != 0L
     }
 
-    fun genPseudoLegalMoves(): List<Move> {
+    fun genPseudoLegalMoves(capturesOnly: Boolean = false): List<Move> {
         val moves = ArrayList<Move>()
 
         for (i in 0..<pieces.size) {
@@ -184,7 +184,7 @@ class Board {
                     PieceType.KNIGHT -> {
                         // knight moves and attacks
                         Bitboards.forAllSquares(
-                            MoveGen.KNIGHT_ATTACKS[i] and colorsBB[turn.idx()].inv()
+                            MoveGen.KNIGHT_ATTACKS[i] and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(src, square, pieces[square.value]))
                         }
@@ -205,20 +205,22 @@ class Board {
                             }
                         }
                         // pawn moves
-                        val front = Square(i + MoveGen.PAWN_DIRECTIONS[turn.idx()])
-                        if (pieces[front.value] == Piece.NONE) {
-                            if (front.rank == turn.opponent().backRank()) {
-                                moves.add(Move(src, front, Piece.NONE, promotion = PieceType.QUEEN))
-                                moves.add(Move(src, front, Piece.NONE, promotion = PieceType.KNIGHT))
-                                moves.add(Move(src, front, Piece.NONE, promotion = PieceType.ROOK))
-                                moves.add(Move(src, front, Piece.NONE, promotion = PieceType.BISHOP))
-                            } else {
-                                moves.add(Move(src, front, Piece.NONE))
-                            }
+                        if (!capturesOnly) {
+                            val front = Square(i + MoveGen.PAWN_DIRECTIONS[turn.idx()])
+                            if (pieces[front.value] == Piece.NONE) {
+                                if (front.rank == turn.opponent().backRank()) {
+                                    moves.add(Move(src, front, Piece.NONE, promotion = PieceType.QUEEN))
+                                    moves.add(Move(src, front, Piece.NONE, promotion = PieceType.KNIGHT))
+                                    moves.add(Move(src, front, Piece.NONE, promotion = PieceType.ROOK))
+                                    moves.add(Move(src, front, Piece.NONE, promotion = PieceType.BISHOP))
+                                } else {
+                                    moves.add(Move(src, front, Piece.NONE))
+                                }
 
-                            val doublePushSquare = Square(i + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
-                            if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
-                                moves.add(Move(src, doublePushSquare, Piece.NONE))
+                                val doublePushSquare = Square(i + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
+                                if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
+                                    moves.add(Move(src, doublePushSquare, Piece.NONE))
+                                }
                             }
                         }
                     }
@@ -226,7 +228,7 @@ class Board {
                     PieceType.KING -> {
                         // normal king moves and attacks
                         Bitboards.forAllSquares(
-                            MoveGen.KING_ATTACKS[i] and colorsBB[turn.idx()].inv()
+                            MoveGen.KING_ATTACKS[i] and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(src, square, pieces[square.value]))
                         }
@@ -235,7 +237,8 @@ class Board {
                     PieceType.BISHOP -> {
                         // bishop moves and attacks
                         Bitboards.forAllSquares(
-                            Magic.getBishopAttacks(src.value, occupiedBB) and colorsBB[turn.idx()].inv()
+                            Magic.getBishopAttacks(src.value, occupiedBB)
+                                    and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(src, square, pieces[square.value]))
                         }
@@ -244,7 +247,8 @@ class Board {
                     PieceType.ROOK -> {
                         // rook moves and attacks
                         Bitboards.forAllSquares(
-                            Magic.getRookAttacks(src.value, occupiedBB) and colorsBB[turn.idx()].inv()
+                            Magic.getRookAttacks(src.value, occupiedBB)
+                                    and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(src, square, pieces[square.value]))
                         }
@@ -255,7 +259,7 @@ class Board {
                         Bitboards.forAllSquares(
                             (Magic.getRookAttacks(src.value, occupiedBB)
                                     or Magic.getBishopAttacks(src.value, occupiedBB)
-                                    ) and colorsBB[turn.idx()].inv()
+                                    ) and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(src, square, pieces[square.value]))
                         }
@@ -265,14 +269,17 @@ class Board {
         }
 
         // castling
-        for (i in 0..3) {
-            if (castlingRights and Square.CASTLING_ROOK_SQUARES[i].bb() != 0L
-                && Bitboards.CASTLING_EMPTY[i] and occupiedBB == 0L
-                && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[i], turn.opponent())
-            ) {
-                moves.add(Move(Square.KING_STARTS[i / 2], Square.CASTLING_TARGET_SQUARES[i], Piece.NONE, castle = i))
+        if (!capturesOnly) {
+            for (i in 0..3) {
+                if (castlingRights and Square.CASTLING_ROOK_SQUARES[i].bb() != 0L
+                    && Bitboards.CASTLING_EMPTY[i] and occupiedBB == 0L
+                    && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[i], turn.opponent())
+                ) {
+                    moves.add(Move(Square.KING_STARTS[i / 2], Square.CASTLING_TARGET_SQUARES[i], Piece.NONE, castle = i))
+                }
             }
         }
+
 
         // en passant
         if (epSquare != Square(-1)) {
@@ -286,8 +293,8 @@ class Board {
         return moves
     }
 
-    fun genMoves(): List<Move> {
-        val moves = genPseudoLegalMoves()
+    fun genMoves(capturesOnly: Boolean = false): List<Move> {
+        val moves = genPseudoLegalMoves(capturesOnly)
         val currentColor = turn
 
         return moves.filter(fun(move: Move): Boolean {
