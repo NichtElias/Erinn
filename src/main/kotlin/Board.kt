@@ -8,8 +8,10 @@ class Board {
     var epSquare: Square = Square(-1) // the square that can be attacked after a double pawn push
     var turn: Color = Color.WHITE
     var halfMoves: Int = 0
-    var fullMoves: Int = 0
+    var fullMoves: Int = 1
     val pieces: Array<Piece> = Array(64) { _ -> Piece.NONE }
+
+    val occupiedBB: Bitboard get() = colorsBB[0] or colorsBB[1]
 
     fun place(piece: Piece, square: Square) {
         val pieceIdx = piece.type().idx()
@@ -121,6 +123,9 @@ class Board {
             place(Piece(movedColor, PieceType.PAWN), move.src)
         }
 
+        // remove piece from dst square
+        remove(move.dst)
+
         // revert castling rook movement
         if (move.castle != -1) {
             place(Piece(movedColor, PieceType.ROOK), Square.CASTLING_ROOK_SQUARES[move.castle])
@@ -145,7 +150,7 @@ class Board {
         halfMoves = stateInfo.halfMoves
     }
 
-    fun genMoves(): List<Move> {
+    fun genPseudoLegalMoves(): List<Move> {
         val moves = ArrayList<Move>()
 
         for (i in 0..<pieces.size) {
@@ -153,8 +158,51 @@ class Board {
             if (piece.color() == turn) {
                 when (piece.type()) {
                     PieceType.KNIGHT -> {
+                        // knight moves and attacks
                         Bitboards.forAllSquares(
-                            Bitboards.KNIGHT_ATTACKS[i] and colorsBB[piece.color().idx()].inv()
+                            Bitboards.KNIGHT_ATTACKS[i] and colorsBB[turn.idx()].inv()
+                        ) { square ->
+                            moves.add(Move(Square(i), square, pieces[square.value]))
+                        }
+                    }
+
+                    PieceType.PAWN -> {
+                        // normal pawn attacks
+                        Bitboards.forAllSquares(
+                            Bitboards.INDEXED_PAWN_ATTACKS[turn.idx()][i] and colorsBB[turn.opponent().idx()]
+                        ) { square ->
+                            moves.add(Move(Square(i), square, pieces[square.value]))
+                        }
+                        // pawn moves
+                        Bitboards.forAllSquares(
+                            Bitboards.INDEXED_PAWN_MOVES[turn.idx()][i] and occupiedBB.inv()
+                        ) { square ->
+                            moves.add(Move(Square(i), square, Piece.NONE))
+                        }
+                    }
+
+                    PieceType.KING -> {
+                        // normal king moves and attacks
+                        Bitboards.forAllSquares(
+                            Bitboards.KING_ATTACKS[i] and colorsBB[turn.idx()].inv()
+                        ) { square ->
+                            moves.add(Move(Square(i), square, pieces[square.value]))
+                        }
+                    }
+
+                    PieceType.BISHOP, PieceType.QUEEN -> {
+                        // bishop moves and attacks
+                        Bitboards.forAllSquares(
+                            Bitboards.slidingMoves(Square(i), occupiedBB, Bitboards.BISHOP_RELATIVE_MOVEMENTS) and colorsBB[turn.idx()].inv()
+                        ) { square ->
+                            moves.add(Move(Square(i), square, pieces[square.value]))
+                        }
+                    }
+
+                    PieceType.ROOK, PieceType.QUEEN -> {
+                        // rook moves and attacks
+                        Bitboards.forAllSquares(
+                            Bitboards.slidingMoves(Square(i), occupiedBB, Bitboards.ROOK_RELATIVE_MOVEMENTS) and colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(Square(i), square, pieces[square.value]))
                         }
@@ -164,6 +212,26 @@ class Board {
         }
 
         return moves
+    }
+
+    fun genMoves(): List<Move> {
+        val moves = genPseudoLegalMoves()
+        val currentColor = turn
+
+        return moves.filter(fun(move: Move): Boolean {
+            var legal = true
+
+            val stateInfo = doMove(move)
+            for (subMove in genPseudoLegalMoves()) {
+                if (subMove.dst == kingSquares[currentColor.idx()]) {
+                    legal = false
+                    break
+                }
+            }
+            undoMove(move, stateInfo)
+
+            return legal
+        })
     }
 
     override fun toString(): String {
@@ -180,6 +248,57 @@ class Board {
         }
 
         return b.toString()
+    }
+
+    fun toFen(): String {
+        val sb = StringBuilder()
+
+        // 1st Part: ranks
+        for (ri in 7 downTo 0) {
+            var empty = 0
+
+            for (piece in pieces.sliceArray(ri*8..ri*8+7)) {
+                if (piece == Piece.NONE) {
+                    empty++
+                } else {
+                    if (empty != 0) sb.append(empty.toString())
+                    sb.append(piece.toString())
+                    empty = 0
+                }
+            }
+            if (empty != 0) sb.append(empty.toString())
+
+            if (ri != 0) sb.append("/")
+        }
+
+        sb.append(" ")
+        // 2nd Part: whose turn is it?
+        sb.append(if (turn == Color.BLACK) "b" else "w")
+
+        sb.append(" ")
+        // 3rd Part: castling rights
+        if (castlingRights and Bitboards.H1 != 0L) sb.append("K")
+        if (castlingRights and Bitboards.A1 != 0L) sb.append("Q")
+        if (castlingRights and Bitboards.H1 != 0L) sb.append("k")
+        if (castlingRights and Bitboards.A1 != 0L) sb.append("q")
+        if (castlingRights == 0L) sb.append("-")
+
+        sb.append(" ")
+        // 4th Part: en passant square
+        if (epSquare != Square(-1))
+            sb.append(epSquare.toUci())
+        else
+            sb.append("-")
+
+        sb.append(" ")
+        // 5th Part: half move clock
+        sb.append(halfMoves.toString())
+
+        sb.append(" ")
+        // 6th Part: full move counter
+        sb.append(fullMoves.toString())
+
+        return sb.toString()
     }
 
     companion object {

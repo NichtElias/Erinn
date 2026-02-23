@@ -3,6 +3,7 @@ package party.elias.uci
 import party.elias.Board
 import party.elias.Engine
 import party.elias.Move
+import kotlin.collections.isEmpty
 
 fun run() {
 
@@ -74,4 +75,19 @@ fun run() {
         }
     }
 
+}
+
+fun uciPositionCmd(fen: String, vararg moves: Move): String {
+    val sb = StringBuilder()
+
+    for (move in moves) {
+        sb.append(move.toUci())
+        sb.append(" ")
+    }
+
+    return if (moves.isEmpty()) {
+        "position fen $fen"
+    } else {
+        "position fen $fen moves $sb"
+    }
 }

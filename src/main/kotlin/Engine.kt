@@ -18,4 +18,20 @@ class Engine {
         return nodes
     }
 
+    fun perftDivide(depth: Int): Map<Move, Long> {
+        val moves = position.genMoves()
+
+        val results = HashMap<Move, Long>()
+
+        for (move in moves) {
+            if (depth == 1) {
+                results[move] = 1
+            } else {
+                results[move] = perft(depth - 1)
+            }
+        }
+
+        return results
+    }
+
 }
