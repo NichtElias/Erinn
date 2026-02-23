@@ -51,10 +51,13 @@ object MoveGen {
         return bb
     }
 
-    val PAWN_DIRECTIONS: IntArray = intArrayOf(-8, 8) // these are square offsets, indexed by color
-
     val ROOK_RELATIVE_MOVEMENTS: Array<Pair<Int, Int>> = arrayOf(Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1))
     val BISHOP_RELATIVE_MOVEMENTS: Array<Pair<Int, Int>> = arrayOf(Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1))
+
+    val ROOK_ATTACK_MASKS: LongArray = LongArray(64) { idx -> slidingMoves(Square(idx), 0L, ROOK_RELATIVE_MOVEMENTS) }
+    val BISHOP_ATTACK_MASKS: LongArray = LongArray(64) { idx -> slidingMoves(Square(idx), 0L, BISHOP_RELATIVE_MOVEMENTS) }
+
+    val PAWN_DIRECTIONS: IntArray = intArrayOf(-8, 8) // these are square offsets, indexed by color
 
     fun slidingMoves(sq: Square, blockers: Long, relativeMovements: Array<Pair<Int, Int>>): Long {
         var bb = 0L
@@ -64,15 +67,14 @@ object MoveGen {
                 val rank = sq.rank + ro * i
                 val file = sq.file + fo * i
 
-                if (rank in 0..7 && file in 0..7) {
-                    val dst = Square(rank, file)
-                    bb = bb or dst.bb()
-                    if (dst.bb() and blockers != 0L) {
-                        break
-                    }
-                } else {
+                if (!(rank in 0..7 && file in 0..7))
                     break
-                }
+
+                val dst = Square(rank, file)
+                bb = bb or dst.bb()
+
+                if (dst.bb() and blockers != 0L)
+                    break
             }
         }
 
