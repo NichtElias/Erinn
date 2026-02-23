@@ -51,7 +51,7 @@ object MoveGen {
         return bb
     }
 
-    val PAWN_DIRECTIONS: IntArray = arrayOf(-8, 8).toIntArray() // these are square offsets, indexed by color
+    val PAWN_DIRECTIONS: IntArray = intArrayOf(-8, 8) // these are square offsets, indexed by color
 
     val ROOK_RELATIVE_MOVEMENTS: Array<Pair<Int, Int>> = arrayOf(Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1))
     val BISHOP_RELATIVE_MOVEMENTS: Array<Pair<Int, Int>> = arrayOf(Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1))
