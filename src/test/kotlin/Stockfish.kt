@@ -33,13 +33,14 @@ class Stockfish {
             line = reader.readLine()
         } while (line == "" || line.startsWith("info"))
 
-        while (line != "") {
+        while (line != "" && !line.startsWith("Nodes searched: ")) {
             results[line.split(":")[0]] = line.split(" ")[1].toLong()
 
             line = reader.readLine()
         }
 
-        reader.readLine() // skip "Nodes searched: x"
+        if (!line.startsWith("Nodes searched: "))
+            reader.readLine() // skip "Nodes searched: x"
         reader.readLine() // skip empty line
 
         return results

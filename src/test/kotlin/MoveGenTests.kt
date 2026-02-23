@@ -56,18 +56,24 @@ class MoveGenTests {
 
         if (stockfishResults.values.sum() != engineResults.values.sum()) {
             // check for falsely generated moved
+            val wrongMoves: ArrayList<Move> = ArrayList()
             for (move in engineResults.keys) {
                 if (!stockfishResults.containsKey(move.toUci())) {
-                    throw AssertionFailedError("generated illegal move '${move.toUci()}' at '${engine.position.toFen()}'")
+                    wrongMoves.add(move)
                 }
             }
 
+            if (!wrongMoves.isEmpty()) throw AssertionFailedError("generated illegal moves $wrongMoves at '${engine.position.toFen()}'")
+
             // check for missing moves
+            val missingMoves: ArrayList<String> = ArrayList()
             for (move in stockfishResults.keys) {
                 if (!engineResults.containsKey(Move.fromUci(move, engine.position))) {
-                    throw AssertionFailedError("missing move '$move' at '${engine.position.toFen()}'")
+                    missingMoves.add(move)
                 }
             }
+
+            if (!missingMoves.isEmpty()) throw AssertionFailedError("missing moves $missingMoves at '${engine.position.toFen()}'")
 
             // moves match at this depth, time to check where to search deeper
             for ((move, count) in engineResults) {

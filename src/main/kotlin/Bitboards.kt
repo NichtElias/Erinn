@@ -5,11 +5,47 @@ typealias BitboardArray = LongArray
 
 object Bitboards {
     const val A1: Bitboard = 1L
+    const val B1: Bitboard = 1L shl 1
+    const val C1: Bitboard = 1L shl 2
+    const val D1: Bitboard = 1L shl 3
+    const val E1: Bitboard = 1L shl 4
+    const val F1: Bitboard = 1L shl 5
+    const val G1: Bitboard = 1L shl 6
     const val H1: Bitboard = 1L shl 7
     const val A8: Bitboard = 1L shl 56
+    const val B8: Bitboard = 1L shl 57
+    const val C8: Bitboard = 1L shl 58
+    const val D8: Bitboard = 1L shl 59
+    const val E8: Bitboard = 1L shl 60
+    const val F8: Bitboard = 1L shl 61
+    const val G8: Bitboard = 1L shl 62
     const val H8: Bitboard = 1L shl 63
 
     const val CASTLING_ALL: Bitboard = A1 or H1 or A8 or H8
+
+    const val CASTLING_UNATTACKED_WQ: Bitboard = E1 or D1 or C1
+    const val CASTLING_UNATTACKED_WK: Bitboard = E1 or F1 or G1
+    const val CASTLING_UNATTACKED_BQ: Bitboard = E8 or D8 or C8
+    const val CASTLING_UNATTACKED_BK: Bitboard = E8 or F8 or G8
+
+    val CASTLING_UNATTACKED: BitboardArray = longArrayOf(
+        CASTLING_UNATTACKED_WQ,
+        CASTLING_UNATTACKED_WK,
+        CASTLING_UNATTACKED_BQ,
+        CASTLING_UNATTACKED_BK
+    )
+
+    const val CASTLING_EMPTY_WQ: Bitboard = B1 or C1 or D1
+    const val CASTLING_EMPTY_WK: Bitboard = F1 or G1
+    const val CASTLING_EMPTY_BQ: Bitboard = B8 or C8 or D8
+    const val CASTLING_EMPTY_BK: Bitboard = F8 or G8
+
+    val CASTLING_EMPTY: BitboardArray = longArrayOf(
+        CASTLING_EMPTY_WQ,
+        CASTLING_EMPTY_WK,
+        CASTLING_EMPTY_BQ,
+        CASTLING_EMPTY_BK
+    )
 
     const val RANK_1: Bitboard = 0xFFL
     const val RANK_2: Bitboard = RANK_1 shl 8

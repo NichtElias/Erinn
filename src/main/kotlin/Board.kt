@@ -150,6 +150,29 @@ class Board {
         halfMoves = stateInfo.halfMoves
     }
 
+    fun areSquaresAttackedBy(squares: Bitboard, color: Color): Boolean {
+        return Bitboards.checkSquares(squares) { square ->
+            // checking if a piece on the square could attack an opponents piece of the same type
+
+            if (MoveGen.INDEXED_PAWN_ATTACKS[color.opponent().idx()][square.value]
+                and piecesBB[PieceType.PAWN.idx()] and colorsBB[color.idx()] != 0L)
+                return@checkSquares true
+            if (Magic.getBishopAttacks(square.value, occupiedBB)
+                and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()])
+                and colorsBB[color.idx()] != 0L)
+                return@checkSquares true
+            if (Magic.getRookAttacks(square.value, occupiedBB)
+                and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()])
+                and colorsBB[color.idx()] != 0L)
+                return@checkSquares true
+            if (MoveGen.KNIGHT_ATTACKS[square.value]
+                and piecesBB[PieceType.KNIGHT.idx()] and colorsBB[color.idx()] != 0L)
+                return@checkSquares true
+
+            return@checkSquares false
+        } || MoveGen.KING_ATTACKS[kingSquares[color.idx()].value] and squares != 0L
+    }
+
     fun genPseudoLegalMoves(): List<Move> {
         val moves = ArrayList<Move>()
 
@@ -241,7 +264,24 @@ class Board {
             }
         }
 
+        // castling
+        for (i in 0..3) {
+            if (castlingRights and Square.CASTLING_ROOK_SQUARES[i].bb() != 0L
+                && Bitboards.CASTLING_EMPTY[i] and occupiedBB == 0L
+                && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[i], turn.opponent())
+            ) {
+                moves.add(Move(Square.KING_STARTS[i / 2], Square.CASTLING_TARGET_SQUARES[i], Piece.NONE, castle = i))
+            }
+        }
 
+        // en passant
+        if (epSquare != Square(-1)) {
+            Bitboards.forAllSquares(MoveGen.INDEXED_PAWN_ATTACKS[turn.opponent().idx()][epSquare.value] and
+                    piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]
+            ) { src ->
+                moves.add(Move(src, epSquare, Piece(turn.opponent(), PieceType.PAWN), isEp = true))
+            }
+        }
 
         return moves
     }
@@ -251,15 +291,10 @@ class Board {
         val currentColor = turn
 
         return moves.filter(fun(move: Move): Boolean {
-            var legal = true
-
             val stateInfo = doMove(move)
-            for (subMove in genPseudoLegalMoves()) {
-                if (subMove.dst == kingSquares[currentColor.idx()]) {
-                    legal = false
-                    break
-                }
-            }
+
+            val legal = !areSquaresAttackedBy(kingSquares[currentColor.idx()].bb(), currentColor.opponent())
+
             undoMove(move, stateInfo)
 
             return legal

@@ -34,6 +34,7 @@ data class Move(
 
             for (i in 0..3) {
                 if (src == Square.KING_STARTS[i / 2]
+                    && position.pieces[src.value].type() == PieceType.KING
                     && dst == Square.CASTLING_TARGET_SQUARES[i]
                 ) {
                     castle = i
