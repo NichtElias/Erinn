@@ -235,7 +235,7 @@ class Board {
                     PieceType.BISHOP -> {
                         // bishop moves and attacks
                         Bitboards.forAllSquares(
-                            MoveGen.slidingMoves(src, occupiedBB, MoveGen.BISHOP_RELATIVE_MOVEMENTS) and colorsBB[turn.idx()].inv()
+                            Magic.getBishopAttacks(src.value, occupiedBB) and colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(src, square, pieces[square.value]))
                         }
@@ -244,7 +244,7 @@ class Board {
                     PieceType.ROOK -> {
                         // rook moves and attacks
                         Bitboards.forAllSquares(
-                            MoveGen.slidingMoves(src, occupiedBB, MoveGen.ROOK_RELATIVE_MOVEMENTS) and colorsBB[turn.idx()].inv()
+                            Magic.getRookAttacks(src.value, occupiedBB) and colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(src, square, pieces[square.value]))
                         }
@@ -253,8 +253,8 @@ class Board {
                     PieceType.QUEEN -> {
                         // queen moves and attacks
                         Bitboards.forAllSquares(
-                            (MoveGen.slidingMoves(src, occupiedBB, MoveGen.ROOK_RELATIVE_MOVEMENTS)
-                                    or MoveGen.slidingMoves(src, occupiedBB, MoveGen.BISHOP_RELATIVE_MOVEMENTS)
+                            (Magic.getRookAttacks(src.value, occupiedBB)
+                                    or Magic.getBishopAttacks(src.value, occupiedBB)
                                     ) and colorsBB[turn.idx()].inv()
                         ) { square ->
                             moves.add(Move(src, square, pieces[square.value]))

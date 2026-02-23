@@ -62,7 +62,20 @@ fun run() {
 
         } else if (cmd[0] == "go") {
 
-            // TODO
+            if (cmd[1] == "perft") {
+                val depth = cmd[2].toInt()
+
+                val results = engine.perftDivide(depth)
+
+                var total = 0L
+                for ((move, nodes) in results) {
+                    println("${move.toUci()}: $nodes")
+                    total += nodes
+                }
+                println()
+                println("Nodes searched: $total")
+                println()
+            }
 
         } else if (cmd[0] == "stop") {
 

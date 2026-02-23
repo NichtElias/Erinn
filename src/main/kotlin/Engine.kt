@@ -27,7 +27,9 @@ class Engine {
             if (depth == 1) {
                 results[move] = 1
             } else {
+                val stateInfo = position.doMove(move)
                 results[move] = perft(depth - 1)
+                position.undoMove(move, stateInfo)
             }
         }
 
