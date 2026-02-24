@@ -1,8 +1,7 @@
-import org.junit.jupiter.api.Test
-import org.opentest4j.AssertionFailedError
 import party.elias.Board
 import party.elias.Engine
 import party.elias.Move
+import kotlin.test.Test
 
 class MoveGenTests {
     val stockfish = Stockfish()
@@ -57,7 +56,7 @@ class MoveGenTests {
                 }
             }
 
-            if (!wrongMoves.isEmpty()) throw AssertionFailedError("generated illegal moves $wrongMoves at '${engine.position.toFen()}'")
+            if (!wrongMoves.isEmpty()) throw AssertionError("generated illegal moves $wrongMoves at '${engine.position.toFen()}'")
 
             // check for missing moves
             val missingMoves: ArrayList<String> = ArrayList()
@@ -67,7 +66,7 @@ class MoveGenTests {
                 }
             }
 
-            if (!missingMoves.isEmpty()) throw AssertionFailedError("missing moves $missingMoves at '${engine.position.toFen()}'")
+            if (!missingMoves.isEmpty()) throw AssertionError("missing moves $missingMoves at '${engine.position.toFen()}'")
 
             // moves match at this depth, time to check where to search deeper
             for ((move, count) in engineResults) {
