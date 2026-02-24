@@ -21,8 +21,6 @@ data class Move(
         val NULL_MOVE = Move(Square(0), Square(0), Piece.NONE)
 
         fun fromUci(uciMove: String, position: Board): Move {
-            assert(uciMove.length in 4..5)
-
             val src = Square.parseUci(uciMove.substring(0..1))
             val dst = Square.parseUci(uciMove.substring(2..3))
             val promotion: PieceType = if (uciMove.length > 4) Piece.fromSymbol(uciMove[4]).type() else PieceType.NONE

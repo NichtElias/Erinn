@@ -1,14 +1,8 @@
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.opentest4j.AssertionFailedError
 import party.elias.Board
 import party.elias.Engine
 import party.elias.Move
-import party.elias.uci.uciPositionCmd
-import java.io.BufferedReader
-import java.io.BufferedWriter
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 
 class MoveGenTests {
     val stockfish = Stockfish()

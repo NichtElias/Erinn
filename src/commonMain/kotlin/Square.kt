@@ -1,5 +1,7 @@
 package party.elias
 
+import kotlin.jvm.JvmInline
+
 @JvmInline
 value class Square(val value: Int) {
     constructor(rank: Int, file: Int) : this(rank * 8 + file)
@@ -26,8 +28,6 @@ value class Square(val value: Int) {
 
     companion object {
         fun parseUci(uciSquare: String): Square {
-            assert(uciSquare.length == 2)
-
             return Square((uciSquare[1] - '1'), (uciSquare[0] - 'a'))
         }
 

@@ -1,22 +1,65 @@
 plugins {
-    kotlin("jvm") version "2.2.21"
+    kotlin("multiplatform") version "2.2.21"
 }
 
 group = "party.elias"
-version = "1.0-SNAPSHOT"
+version = "0"
 
 repositories {
     mavenCentral()
 }
 
-dependencies {
-    testImplementation(kotlin("test"))
-}
-
 kotlin {
-    jvmToolchain(21)
+
+    jvm {
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+    }
+
+    linuxX64 {
+        binaries {
+            executable {
+                entryPoint = "party.elias.main"
+            }
+        }
+    }
+
+    sourceSets {
+        val commonMain by getting
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+    }
 }
 
-tasks.test {
-    useJUnitPlatform()
+tasks.named<Jar>("jvmJar") {
+    manifest {
+        attributes["Main-Class"] = "party.elias.MainKt"
+    }
+
+    from(configurations.named("jvmRuntimeClasspath").get().map { file ->
+        if (file.isDirectory) file else zipTree(file)
+    })
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.register<JavaExec>("runJar") {
+    group = "application"
+    description = "Builds and runs the Jar"
+
+    dependsOn("jvmJar")
+
+    val jarTask = tasks.named<Jar>("jvmJar").get()
+    classpath(jarTask.archiveFile)
+
+    mainClass.set("party.elias.MainKt")
+
+    standardInput = System.`in`
+    standardOutput = System.out
+    errorOutput = System.err
 }

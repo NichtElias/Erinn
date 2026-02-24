@@ -42,8 +42,6 @@ class Board {
         val movingColor = movingPiece.color()
         val movingType = movingPiece.type()
 
-        assert(movingType != PieceType.NONE)
-
         // increment half moves
         halfMoves++
 

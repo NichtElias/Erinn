@@ -1,5 +1,12 @@
 package party.elias
 
+fun Long.toIntExact(): Int {
+    if (this !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+        throw ArithmeticException("Out of int range: $this")
+    }
+    return this.toInt()
+}
+
 object Magic {
     // magics and shifts shamelessly stolen from Sebastian Lague
     val ROOK_SHIFTS: IntArray = intArrayOf(52, 52, 52, 52, 52, 52, 52, 52, 53, 53, 53, 54, 53, 53, 54, 53, 53, 54, 54, 54, 53, 53, 54, 53, 53, 54, 53, 53, 54, 54, 54, 53, 52, 54, 53, 53, 53, 53, 54, 53, 52, 53, 54, 54, 53, 53, 54, 53, 53, 54, 54, 54, 53, 53, 54, 53, 52, 53, 53, 53, 53, 53, 53, 52)
@@ -43,13 +50,13 @@ object Magic {
 
     fun getBishopAttacks(squareIdx: Int, allBlockers: Long): Long {
         val index =
-            Math.toIntExact(((allBlockers and BISHOP_BLOCKER_MASKS[squareIdx]) * BISHOP_MAGICS[squareIdx]) ushr BISHOP_SHIFTS[squareIdx])
+            (((allBlockers and BISHOP_BLOCKER_MASKS[squareIdx]) * BISHOP_MAGICS[squareIdx]) ushr BISHOP_SHIFTS[squareIdx]).toIntExact()
         return BISHOP_MOVES[squareIdx]!![index]
     }
 
     fun getRookAttacks(squareIdx: Int, allBlockers: Long): Long {
         val index =
-            Math.toIntExact(((allBlockers and ROOK_BLOCKER_MASKS[squareIdx]) * ROOK_MAGICS[squareIdx]) ushr ROOK_SHIFTS[squareIdx])
+            (((allBlockers and ROOK_BLOCKER_MASKS[squareIdx]) * ROOK_MAGICS[squareIdx]) ushr ROOK_SHIFTS[squareIdx]).toIntExact()
         return ROOK_MOVES[squareIdx]!![index]
     }
 
@@ -70,12 +77,12 @@ object Magic {
 
 
             for (blockers in Bitboards.permutations(BISHOP_BLOCKER_MASKS[i])) {
-                val index = Math.toIntExact((blockers * BISHOP_MAGICS[i]) ushr bShift)
+                val index = ((blockers * BISHOP_MAGICS[i]) ushr bShift).toIntExact()
                 BISHOP_MOVES[i]!![index] = MoveGen.slidingMoves(Square(i), blockers, MoveGen.BISHOP_RELATIVE_MOVEMENTS)
             }
 
             for (blockers in Bitboards.permutations(ROOK_BLOCKER_MASKS[i])) {
-                val index = Math.toIntExact((blockers * ROOK_MAGICS[i]) ushr rShift)
+                val index = ((blockers * ROOK_MAGICS[i]) ushr rShift).toIntExact()
                 ROOK_MOVES[i]!![index] = MoveGen.slidingMoves(Square(i), blockers, MoveGen.ROOK_RELATIVE_MOVEMENTS)
             }
         }

@@ -1,5 +1,7 @@
 package party.elias
 
+import kotlin.jvm.JvmInline
+
 @JvmInline
 value class Color(val value: Int) { // WHITE = 0b1000, BLACK = 0b0000
     fun opponent(): Color = Color(value.inv() and 8)
