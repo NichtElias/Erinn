@@ -171,6 +171,10 @@ class Board {
         } || MoveGen.KING_ATTACKS[kingSquares[color.idx()].value] and squares != 0L
     }
 
+    fun isColorInCheck(color: Color): Boolean {
+        return areSquaresAttackedBy(kingSquares[color.idx()].bb(), color.opponent())
+    }
+
     fun genPseudoLegalMoves(capturesOnly: Boolean = false): List<Move> {
         val moves = ArrayList<Move>()
 
@@ -298,7 +302,7 @@ class Board {
         return moves.filter(fun(move: Move): Boolean {
             val stateInfo = doMove(move)
 
-            val legal = !areSquaresAttackedBy(kingSquares[currentColor.idx()].bb(), currentColor.opponent())
+            val legal = !isColorInCheck(currentColor)
 
             undoMove(move, stateInfo)
 

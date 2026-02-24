@@ -66,6 +66,13 @@ class Engine {
         var bestScore: Score = -MATE_SCORE
         var bestMove: Move = Move.NULL_MOVE
 
+        if (moves.isEmpty()) {
+            if (position.isColorInCheck(position.turn))
+                return Pair(Move.NULL_MOVE, -MATE_SCORE) // we got checkmated
+
+            return Pair(Move.NULL_MOVE, 0) // stalemate
+        }
+
         for (move in moves) {
             val stateInfo = position.doMove(move)
             val (_, negScore) = search(remainingDepth - 1, -beta, -alpha)
