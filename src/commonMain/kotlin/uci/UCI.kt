@@ -1,11 +1,23 @@
 package party.elias.uci
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import party.elias.Board
 import party.elias.Engine
+import party.elias.Limits
 import party.elias.Move
 import kotlin.collections.isEmpty
+import kotlin.math.max
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
 
-fun run() {
+val searchScope = CoroutineScope(Dispatchers.Default + Job())
+
+suspend fun run() {
 
     val engine = Engine()
 
@@ -62,7 +74,7 @@ fun run() {
 
         } else if (cmd[0] == "go") {
 
-            if (cmd[1] == "perft") {
+            if (cmd.size > 1 && cmd[1] == "perft") {
                 val depth = cmd[2].toInt()
 
                 val results = engine.perftDivide(depth)
@@ -87,14 +99,24 @@ fun run() {
                     i++
                 }
 
-                val (move, score) = engine.search(depthLimit)
+                val limits = Limits(depthLimit)
 
-                println("bestmove ${move.toUci()} $score")
+                val searchTimer = searchScope.launch {
+                    delay(limits.hardTime)
+                    engine.stop = true
+                }
+
+                searchScope.launch {
+                    val (move, score) = engine.iterDeep(limits)
+                    println("bestmove ${move.toUci()} $score")
+
+                    searchTimer.cancel()
+                }
             }
 
         } else if (cmd[0] == "stop") {
 
-            // TODO
+            engine.stop = true
 
         } else if (cmd[0] == "show") { // nonstandard
 
@@ -118,4 +140,9 @@ fun uciPositionCmd(fen: String, vararg moves: Move): String {
     } else {
         "position fen $fen moves $sb"
     }
+}
+
+fun sendUciInfo(depth: Int, time: Duration, nodes: Long) {
+    val nps = nodes * 1000 / max(time.toInt(DurationUnit.MILLISECONDS), 1)
+    println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes nps $nps")
 }

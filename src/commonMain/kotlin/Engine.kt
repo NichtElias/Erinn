@@ -1,10 +1,21 @@
 package party.elias
 
+import party.elias.uci.sendUciInfo
+import kotlin.concurrent.Volatile
+import kotlin.time.TimeSource
+
 typealias Score = Int
 
 class Engine {
 
     var position: Board = Board.startPos()
+
+    @Volatile
+    var stop: Boolean = false
+
+    var searchStartTime: TimeSource.Monotonic.ValueTimeMark = TimeSource.Monotonic.markNow()
+
+    var nodesSearched: Long = 0
 
     fun evaluate(): Score {
         var whiteMaterial = 0
@@ -57,8 +68,14 @@ class Engine {
         return bestScore
     }
 
-    fun search(remainingDepth: Int, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Pair<Move, Score> {
-        if (remainingDepth == 0) return Pair(Move.NULL_MOVE, qSearch(alpha, beta))
+    fun search(remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Result {
+        if (nodesSearched++ and 4095 == 0L) {
+            if (stop) {
+                return Result.ABORT
+            }
+        }
+
+        if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(alpha, beta))
 
         var alpha = alpha
 
@@ -68,16 +85,18 @@ class Engine {
 
         if (moves.isEmpty()) {
             if (position.isColorInCheck(position.turn))
-                return Pair(Move.NULL_MOVE, -MATE_SCORE) // we got checkmated
+                return Result.CHECKMATED // we got checkmated
 
-            return Pair(Move.NULL_MOVE, 0) // stalemate
+            return Result.STALEMATE // stalemate
         }
 
         for (move in moves) {
             val stateInfo = position.doMove(move)
-            val (_, negScore) = search(remainingDepth - 1, -beta, -alpha)
-            val score = -negScore
+            val result = search(remainingDepth - 1, limits, -beta, -alpha)
+            val score = -result.score
             position.undoMove(move, stateInfo)
+
+            if (result.aborted) return Result.ABORT
 
             if (score > bestScore) {
                 bestScore = score
@@ -87,11 +106,35 @@ class Engine {
                 }
             }
             if (score >= beta) {
-                return Pair(bestMove, bestScore)
+                return Result(bestMove, bestScore)
             }
         }
 
-        return Pair(bestMove, bestScore)
+        return Result(bestMove, bestScore)
+    }
+
+    fun iterDeep(limits: Limits): Result {
+        var deepestResult = Result(Move.NULL_MOVE, -MATE_SCORE)
+
+        searchStartTime = TimeSource.Monotonic.markNow()
+        nodesSearched = 0
+
+        for (d in 1..limits.depth) {
+            val result = search(d, limits)
+
+            if (result.aborted) return deepestResult
+
+            deepestResult = result
+
+            val elapsed = TimeSource.Monotonic.markNow() - searchStartTime
+            sendUciInfo(d, elapsed, nodesSearched)
+
+            if (elapsed > limits.softTime) {
+                return deepestResult
+            }
+        }
+
+        return deepestResult
     }
 
     fun perft(depth: Int): Long {
@@ -128,5 +171,13 @@ class Engine {
 
     companion object {
         const val MATE_SCORE: Score = 32000
+    }
+
+    data class Result(val move: Move, val score: Score, val aborted: Boolean = false) {
+        companion object {
+            val CHECKMATED = Result(Move.NULL_MOVE, -MATE_SCORE)
+            val STALEMATE = Result(Move.NULL_MOVE, 0)
+            val ABORT = Result(Move.NULL_MOVE, -MATE_SCORE, aborted = true)
+        }
     }
 }
