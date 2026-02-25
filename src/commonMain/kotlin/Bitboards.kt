@@ -65,7 +65,7 @@ object Bitboards {
     const val FILE_G: Bitboard = FILE_A shl 6
     const val FILE_H: Bitboard = FILE_A shl 7
 
-    fun forAllSquares(bb: Bitboard, f: (square: Square) -> Unit) {
+    inline fun forAllSquares(bb: Bitboard, f: (square: Square) -> Unit) {
         var bb = bb
         while (bb != 0L) {
             val shift = bb.countTrailingZeroBits()
@@ -75,7 +75,7 @@ object Bitboards {
     }
 
     // tests the predicate f for every square on the bitboard, returns true if one of the tests returns true, else false
-    fun checkSquares(bb: Bitboard, f: (square: Square) -> Boolean): Boolean {
+    inline fun checkSquares(bb: Bitboard, f: (square: Square) -> Boolean): Boolean {
         var bb = bb
         while (bb != 0L) {
             val shift = bb.countTrailingZeroBits()
