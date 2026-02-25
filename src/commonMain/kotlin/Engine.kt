@@ -24,7 +24,6 @@ class Engine {
         whiteMaterial += (position.piecesBB[PieceType.KNIGHT.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 300
         whiteMaterial += (position.piecesBB[PieceType.ROOK.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 500
         whiteMaterial += (position.piecesBB[PieceType.QUEEN.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 1000
-        whiteMaterial += (position.piecesBB[PieceType.KING.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 400
 
         var blackMaterial = 0
         blackMaterial += (position.piecesBB[PieceType.PAWN.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 100
@@ -32,7 +31,6 @@ class Engine {
         blackMaterial += (position.piecesBB[PieceType.KNIGHT.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 300
         blackMaterial += (position.piecesBB[PieceType.ROOK.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 500
         blackMaterial += (position.piecesBB[PieceType.QUEEN.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 1000
-        blackMaterial += (position.piecesBB[PieceType.KING.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 400
 
         return (whiteMaterial - blackMaterial) * position.turn.scoreFactor()
     }
