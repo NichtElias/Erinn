@@ -10,6 +10,7 @@ class Board {
     var halfMoves: Int = 0
     var fullMoves: Int = 1
     val pieces: Array<Piece> = Array(64) { _ -> Piece.NONE }
+    var zobristHash: Long = 0
 
     val occupiedBB: Bitboard get() = colorsBB[0] or colorsBB[1]
 
@@ -23,24 +24,32 @@ class Board {
             kingSquares[colorIdx] = square
 
         pieces[square.value] = piece
+
+        zobristHash = zobristHash xor TranspositionTable.pieceHash(piece, square)
     }
 
     // remove piece on square, either because it moved elsewhere or it was captured
     fun remove(square: Square) {
-        val pieceIdx = pieces[square.value].type().idx()
-        val colorIdx = pieces[square.value].color().idx()
+        val piece = pieces[square.value]
+        val pieceIdx = piece.type().idx()
+        val colorIdx = piece.color().idx()
         piecesBB[pieceIdx] = piecesBB[pieceIdx] and square.bb().inv()
         colorsBB[colorIdx] = colorsBB[colorIdx] and square.bb().inv()
 
         pieces[square.value] = Piece.NONE
+
+        zobristHash = zobristHash xor TranspositionTable.pieceHash(piece, square)
     }
 
     fun doMove(move: Move): StateInfo {
-        val stateInfo = StateInfo(castlingRights, epSquare, halfMoves) // save some info for undoing the move
+        val stateInfo = StateInfo(castlingRights, epSquare, halfMoves, zobristHash) // save some info for undoing the move
 
         val movingPiece = pieces[move.src.value]
         val movingColor = movingPiece.color()
         val movingType = movingPiece.type()
+
+        // remove current castling rights from hash
+        zobristHash = zobristHash xor TranspositionTable.castlingHash(castlingRights)
 
         // increment half moves
         halfMoves++
@@ -61,14 +70,22 @@ class Board {
 
         if (movingType == PieceType.PAWN) halfMoves = 0
 
+        // remove old ep file from hash
+        if (epSquare != Square(-1)) {
+            zobristHash = zobristHash xor TranspositionTable.HASH_EP_FILE[epSquare.file]
+        }
+
         // set ep square
-        epSquare = if (movingType == PieceType.PAWN
+        if (movingType == PieceType.PAWN
             && (move.src.bb() and (Bitboards.RANK_2 or Bitboards.RANK_7)) != 0L // from 2nd or 7th rank
             && (move.dst.bb() and (Bitboards.RANK_4 or Bitboards.RANK_5)) != 0L
         ) {
-            move.src.enPassantActualCapture() // enPassantActualCapture not used for intended purpose here
+            epSquare = move.src.enPassantActualCapture() // enPassantActualCapture not used for intended purpose here
+
+            // update hash with new ep file
+            zobristHash = zobristHash xor TranspositionTable.HASH_EP_FILE[epSquare.file]
         } else {
-            Square(-1)
+            epSquare = Square(-1)
         }
 
         // special cases for the king
@@ -96,6 +113,12 @@ class Board {
             // promote
             place(Piece(movingColor, move.promotion), move.dst)
         }
+
+        // add new castling rights to hash
+        zobristHash = zobristHash xor TranspositionTable.castlingHash(castlingRights)
+
+        // update hash with turn change
+        zobristHash = zobristHash xor TranspositionTable.HASH_BLACK_TURN
 
         // bookkeeping
         fullMoves += if (turn == Color.BLACK) 1 else 0
@@ -146,6 +169,7 @@ class Board {
         castlingRights = stateInfo.castlingRights
         epSquare = stateInfo.epSquare
         halfMoves = stateInfo.halfMoves
+        zobristHash = stateInfo.zobristHash
     }
 
     fun areSquaresAttackedBy(squares: Bitboard, color: Color): Boolean {
@@ -407,6 +431,8 @@ class Board {
                 "b" -> Color.BLACK
                 else -> throw IllegalArgumentException("invalid turn color '${parts[1]}' in fen string")
             }
+            if (board.turn == Color.BLACK)
+                board.zobristHash = board.zobristHash xor TranspositionTable.HASH_BLACK_TURN
 
             // 3rd Part: castling rights
             for (c in parts[2]) {
@@ -419,10 +445,13 @@ class Board {
                     else -> throw IllegalArgumentException("invalid castling rights '${parts[2]}' in fen string")
                 }
             }
+            board.zobristHash = board.zobristHash xor TranspositionTable.castlingHash(board.castlingRights)
 
             // 4th Part: en passant square
-            if (parts[3] != "-")
+            if (parts[3] != "-") {
                 board.epSquare = Square.parseUci(parts[3])
+                board.zobristHash = board.zobristHash xor TranspositionTable.HASH_EP_FILE[board.epSquare.file]
+            }
 
             // 5th Part: half move clock
             board.halfMoves = parts[4].toInt()
@@ -438,5 +467,5 @@ class Board {
         }
     }
 
-    class StateInfo(val castlingRights: Long, val epSquare: Square, val halfMoves: Int)
+    class StateInfo(val castlingRights: Long, val epSquare: Square, val halfMoves: Int, val zobristHash: Long)
 }
