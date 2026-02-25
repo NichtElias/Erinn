@@ -10,6 +10,8 @@ class Engine {
 
     var position: Board = Board.startPos()
 
+    val tt: TranspositionTable = TranspositionTable()
+
     @Volatile
     var stop: Boolean = false
 
