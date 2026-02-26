@@ -68,31 +68,64 @@ class Engine {
         return bestScore
     }
 
-    fun search(remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Result {
+    fun search(plyFromRoot: Int, remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Result {
         if (nodesSearched++ and 4095 == 0L) {
             if (stop) {
                 return Result.ABORT
             }
         }
 
-        if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(alpha, beta))
+        // probe transposition table
+        val ttEntry = tt.get(position.zobristHash)
+        if (ttEntry != null) {
+            if (ttEntry.draft >= remainingDepth) {
+                val adjustedScore = ttEntry.getAdjustedScore(position.turn, plyFromRoot)
+                when (ttEntry.bound) {
+                    TranspositionTable.BoundType.EXACT ->
+                        return Result(ttEntry.bestMove!!, adjustedScore, ttEntry.draft + plyFromRoot)
+
+                    TranspositionTable.BoundType.LOWER -> if (adjustedScore >= beta)
+                        return Result(Move.NULL_MOVE, adjustedScore, ttEntry.draft + plyFromRoot)
+
+                    TranspositionTable.BoundType.UPPER -> if (adjustedScore < alpha)
+                        return Result(Move.NULL_MOVE, adjustedScore, ttEntry.draft + plyFromRoot)
+                }
+            }
+        }
+
+        if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(alpha, beta), plyFromRoot)
 
         var alpha = alpha
 
-        val moves = position.genMoves()
+        val moves = position.genMoves() as ArrayList
         var bestScore: Score = -MATE_SCORE
         var bestMove: Move = Move.NULL_MOVE
+        var bestHorizonDepth = 0
 
         if (moves.isEmpty()) {
             if (position.isColorInCheck(position.turn))
-                return Result.CHECKMATED // we got checkmated
+                return Result.checkmated(remainingDepth) // we got checkmated
 
-            return Result.STALEMATE // stalemate
+            return Result.stalemate(remainingDepth) // stalemate
         }
+
+        // swap hash move to the front
+        if (ttEntry?.bestMove != null) {
+            for (i in 0..moves.size) {
+                if (moves[i] == ttEntry.bestMove) {
+                    val firstMove = moves[0]
+                    moves[0] = moves[i]
+                    moves[i] = firstMove
+                    break
+                }
+            }
+        }
+
+        var alphaRaised = false
 
         for (move in moves) {
             val stateInfo = position.doMove(move)
-            val result = search(remainingDepth - 1, limits, -beta, -alpha)
+            val result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha)
             val score = -result.score
             position.undoMove(move, stateInfo)
 
@@ -101,26 +134,38 @@ class Engine {
             if (score > bestScore) {
                 bestScore = score
                 bestMove = move
+                bestHorizonDepth = result.actualHorizonDepth
                 if (score > alpha) {
                     alpha = score
+                    alphaRaised = true
                 }
             }
             if (score >= beta) {
-                return Result(bestMove, bestScore)
+                tt.store(position.zobristHash, bestHorizonDepth - plyFromRoot, position.turn,
+                    plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move)
+                return Result(bestMove, bestScore, bestHorizonDepth)
             }
         }
 
-        return Result(bestMove, bestScore)
+        if (alphaRaised) { // PV node
+            tt.store(position.zobristHash, bestHorizonDepth - plyFromRoot, position.turn,
+                plyFromRoot, bestScore, TranspositionTable.BoundType.EXACT, bestMove)
+        } else { // all node
+            tt.store(position.zobristHash, bestHorizonDepth - plyFromRoot, position.turn,
+                plyFromRoot, bestScore, TranspositionTable.BoundType.UPPER)
+        }
+
+        return Result(bestMove, bestScore, bestHorizonDepth)
     }
 
     fun iterDeep(limits: Limits): Result {
-        var deepestResult = Result(Move.NULL_MOVE, -MATE_SCORE)
+        var deepestResult = Result(Move.NULL_MOVE, -MATE_SCORE, 0)
 
         searchStartTime = TimeSource.Monotonic.markNow()
         nodesSearched = 0
 
         for (d in 1..limits.depth) {
-            val result = search(d, limits)
+            val result = search(0, d, limits)
 
             if (result.aborted) return deepestResult
 
@@ -171,13 +216,21 @@ class Engine {
 
     companion object {
         const val MATE_SCORE: Score = 32000
+        const val MAX_PLY: Int = 128
+        const val MIN_MATE_SCORE: Score = MATE_SCORE - MAX_PLY
     }
 
-    data class Result(val move: Move, val score: Score, val aborted: Boolean = false) {
+    data class Result(val move: Move, val score: Score, val actualHorizonDepth: Int, val aborted: Boolean = false) {
         companion object {
-            val CHECKMATED = Result(Move.NULL_MOVE, -MATE_SCORE)
-            val STALEMATE = Result(Move.NULL_MOVE, 0)
-            val ABORT = Result(Move.NULL_MOVE, -MATE_SCORE, aborted = true)
+            val ABORT = Result(Move.NULL_MOVE, -MATE_SCORE, 0, aborted = true)
+
+            fun checkmated(depth: Int): Result {
+                return Result(Move.NULL_MOVE, -MATE_SCORE + depth, depth)
+            }
+
+            fun stalemate(depth: Int): Result {
+                return Result(Move.NULL_MOVE, 0, depth)
+            }
         }
     }
 }
