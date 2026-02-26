@@ -163,6 +163,7 @@ class Engine {
 
         searchStartTime = TimeSource.Monotonic.markNow()
         nodesSearched = 0
+        stop = false
 
         for (d in 1..limits.depth) {
             val result = search(0, d, limits)

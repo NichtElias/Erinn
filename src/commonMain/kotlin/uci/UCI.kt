@@ -6,12 +6,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import party.elias.Board
+import party.elias.Color
 import party.elias.Engine
 import party.elias.Limits
 import party.elias.Move
 import kotlin.collections.isEmpty
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
@@ -90,16 +93,38 @@ suspend fun run() {
             } else {
 
                 var depthLimit = 64
+                var bTime = -1
+                var wTime = -1
+                var bInc = 0
+                var wInc = 0
+                var moveTime = -1
 
                 var i = 1
                 while (i < cmd.size) {
                     when (cmd[i]) {
                         "depth" -> depthLimit = cmd[++i].toInt()
+                        "btime" -> bTime = cmd[++i].toInt()
+                        "wtime" -> wTime = cmd[++i].toInt()
+                        "binc" -> bInc = cmd[++i].toInt()
+                        "winc" -> wInc = cmd[++i].toInt()
+                        "movetime" -> moveTime = cmd[++i].toInt()
                     }
                     i++
                 }
 
-                val limits = Limits(depthLimit)
+                val ourTime = if (engine.position.turn == Color.BLACK) bTime else wTime
+                val ourInc = if (engine.position.turn == Color.BLACK) bInc else wInc
+
+                var limits = if (moveTime != -1) {
+                    Limits(depthLimit, moveTime.milliseconds, moveTime.milliseconds)
+                } else if (ourTime != -1) {
+                    val softLimit = ourTime / 30 + ourInc / 2
+                    // -50 is because the gui doesn't immediately receive the bestmove once the search is stopped
+                    val hardLimit = min(ourTime - 50, softLimit * 3)
+                    Limits(depthLimit, min(softLimit, hardLimit).milliseconds, hardLimit.milliseconds)
+                } else {
+                    Limits(depthLimit)
+                }
 
                 val searchTimer = searchScope.launch {
                     delay(limits.hardTime)
