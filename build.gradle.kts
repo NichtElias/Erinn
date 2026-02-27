@@ -1,5 +1,6 @@
 plugins {
-    kotlin("multiplatform") version "2.2.21"
+    kotlin("jvm") version "2.2.21"
+    id("com.gradleup.shadow") version "9.3.2"
 }
 
 group = "party.elias"
@@ -9,57 +10,27 @@ repositories {
     mavenCentral()
 }
 
-kotlin {
-
-    jvm {
-        testRuns["test"].executionTask.configure {
-            useJUnitPlatform()
-        }
-    }
-
-    linuxX64 {
-        binaries {
-            executable {
-                entryPoint = "party.elias.main"
-            }
-        }
-    }
-
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-            }
-        }
-
-        val jvmTest by getting {
-            dependencies {
-                implementation(kotlin("test"))
-            }
-        }
-    }
+dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    testImplementation(kotlin("test-junit5"))
 }
 
-tasks.named<Jar>("jvmJar") {
+tasks.test {
+    useJUnitPlatform()
+}
+
+tasks.shadowJar {
+    archiveClassifier.set("")
     manifest {
         attributes["Main-Class"] = "party.elias.MainKt"
     }
-
-    from(configurations.named("jvmRuntimeClasspath").get().map { file ->
-        if (file.isDirectory) file else zipTree(file)
-    })
-
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-tasks.register<JavaExec>("runJar") {
+tasks.register<JavaExec>("run") {
     group = "application"
-    description = "Builds and runs the Jar"
+    description = "Runs the chess engine"
 
-    dependsOn("jvmJar")
-
-    val jarTask = tasks.named<Jar>("jvmJar").get()
-    classpath(jarTask.archiveFile)
+    classpath(sourceSets.main.get().runtimeClasspath)
 
     mainClass.set("party.elias.MainKt")
 
