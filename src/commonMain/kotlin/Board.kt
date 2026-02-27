@@ -1,5 +1,7 @@
 package party.elias
 
+import kotlin.math.min
+
 class Board {
     val piecesBB: BitboardArray = BitboardArray(6)
     val colorsBB: BitboardArray = BitboardArray(2)
@@ -11,8 +13,11 @@ class Board {
     var fullMoves: Int = 1
     val pieces: Array<Piece> = Array(64) { _ -> Piece.NONE }
     var zobristHash: Long = 0
+    val positionHistory: LongArray = LongArray(Engine.MAX_GAME_PLY) // stores hashes of all positions in the game history up to this one
+    var posHistoryStart: Int = 0 // when loading from fen string, we can't know the previous positions, so anything before this index is invalid
 
     val occupiedBB: Bitboard get() = colorsBB[0] or colorsBB[1]
+    val ply: Int get() = (fullMoves - 1) * 2 + if (turn == Color.BLACK) 1 else 0 // for indexing positionHistory and the like
 
     fun place(piece: Piece, square: Square) {
         val pieceIdx = piece.type().idx()
@@ -123,6 +128,7 @@ class Board {
         // bookkeeping
         fullMoves += if (turn == Color.BLACK) 1 else 0
         turn = turn.opponent()
+        positionHistory[ply] = zobristHash
 
         return stateInfo
     }
@@ -170,6 +176,21 @@ class Board {
         epSquare = stateInfo.epSquare
         halfMoves = stateInfo.halfMoves
         zobristHash = stateInfo.zobristHash
+    }
+
+    fun isDrawByRepetition(): Boolean {
+        val minRelRepIdx = min(halfMoves, ply - posHistoryStart)
+        if (minRelRepIdx >= 4) {
+            var occurrences = 1
+            for (i in 2..minRelRepIdx step 2) {
+                if (positionHistory[ply - i] == zobristHash) {
+                    occurrences++
+                    if (occurrences >= 3)
+                        return true
+                }
+            }
+        }
+        return false
     }
 
     fun areSquaresAttackedBy(squares: Bitboard, color: Color): Boolean {
@@ -458,6 +479,10 @@ class Board {
 
             // 6th Part: full move counter
             board.fullMoves = parts[5].toInt()
+
+            // put starting position in position history (can't include )
+            board.positionHistory[board.ply] = board.zobristHash
+            board.posHistoryStart = board.ply
 
             return board
         }

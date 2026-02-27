@@ -75,6 +75,8 @@ class Engine {
             }
         }
 
+        if (position.isDrawByRepetition()) return Result.draw(remainingDepth)
+
         // probe transposition table
         val ttEntry = tt.get(position.zobristHash)
         if (ttEntry != null) {
@@ -106,7 +108,7 @@ class Engine {
             if (position.isColorInCheck(position.turn))
                 return Result.checkmated(remainingDepth) // we got checkmated
 
-            return Result.stalemate(remainingDepth) // stalemate
+            return Result.draw(remainingDepth) // stalemate
         }
 
         // swap hash move to the front
@@ -217,8 +219,9 @@ class Engine {
 
     companion object {
         const val MATE_SCORE: Score = 32000
-        const val MAX_PLY: Int = 128
-        const val MIN_MATE_SCORE: Score = MATE_SCORE - MAX_PLY
+        const val MAX_SEARCH_PLY: Int = 128
+        const val MIN_MATE_SCORE: Score = MATE_SCORE - MAX_SEARCH_PLY
+        const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
     }
 
     data class Result(val move: Move, val score: Score, val actualHorizonDepth: Int, val aborted: Boolean = false) {
@@ -229,7 +232,7 @@ class Engine {
                 return Result(Move.NULL_MOVE, -MATE_SCORE + depth, depth)
             }
 
-            fun stalemate(depth: Int): Result {
+            fun draw(depth: Int): Result {
                 return Result(Move.NULL_MOVE, 0, depth)
             }
         }

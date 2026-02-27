@@ -147,6 +147,10 @@ suspend fun run() {
 
             print(engine.position.toString())
 
+            if (engine.position.isDrawByRepetition()) {
+                println("draw by threefold repetition")
+            }
+
         }
     }
 
