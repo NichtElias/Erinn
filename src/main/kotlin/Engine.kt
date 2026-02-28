@@ -65,7 +65,7 @@ class Engine {
 
         // probe transposition table
         val ttEntry = tt.get(position.zobristHash)
-        if (ttEntry != null) {
+        if (ttEntry != null && plyFromRoot != 0) {
             if (ttEntry.draft >= remainingDepth) {
                 val adjustedScore = ttEntry.getAdjustedScore(position.turn, plyFromRoot)
                 when (ttEntry.bound) {
