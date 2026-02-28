@@ -10,9 +10,12 @@ import party.elias.Color
 import party.elias.Engine
 import party.elias.Limits
 import party.elias.Move
+import party.elias.Score
 import kotlin.collections.isEmpty
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sign
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -171,7 +174,16 @@ fun uciPositionCmd(fen: String, vararg moves: Move): String {
     }
 }
 
-fun sendUciInfo(depth: Int, time: Duration, nodes: Long) {
+fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score) {
     val nps = nodes * 1000 / max(time.toInt(DurationUnit.MILLISECONDS), 1)
-    println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes nps $nps")
+    val scoreStr = if (abs(score) >= Engine.MIN_MATE_SCORE) {
+        if (score >= 0) {
+            "mate ${(Engine.MATE_SCORE - score + 1) / 2}"
+        } else {
+            "mate ${(-Engine.MATE_SCORE - score) / 2}"
+        }
+    } else {
+        "cp $score"
+    }
+    println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes score $scoreStr nps $nps")
 }

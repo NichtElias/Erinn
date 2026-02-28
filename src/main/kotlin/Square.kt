@@ -7,6 +7,7 @@ value class Square(val value: Int) {
     constructor(rank: Int, file: Int) : this(rank * 8 + file)
     val rank: Int get() = value ushr 3
     val file: Int get() = value and 7
+    val mirror: Square get() = Square(value xor 0b111000)
 
     fun bb(): Bitboard {
         return 1L shl value

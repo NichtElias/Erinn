@@ -26,6 +26,7 @@ value class Color(val value: Int) { // WHITE = 0b1000, BLACK = 0b0000
 
 @JvmInline
 value class PieceType(val value: Int) { // ...0ttt
+    val name: String get() = NAMES[value]
     fun idx(): Int = value
 
     companion object {
@@ -37,6 +38,8 @@ value class PieceType(val value: Int) { // ...0ttt
         val KING: PieceType   = PieceType(0b0101)
 
         val NONE: PieceType   = PieceType(0b0111)
+
+        val NAMES: Array<String> = arrayOf("pawn", "bishop", "knight", "rook", "queen", "king")
 
         val VALUES: IntArray = intArrayOf(100, 300, 300, 500, 1000, 400)
     }

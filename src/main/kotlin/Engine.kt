@@ -20,21 +20,7 @@ class Engine {
     var nodesSearched: Long = 0
 
     fun evaluate(): Score {
-        var whiteMaterial = 0
-        whiteMaterial += (position.piecesBB[PieceType.PAWN.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 100
-        whiteMaterial += (position.piecesBB[PieceType.BISHOP.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 300
-        whiteMaterial += (position.piecesBB[PieceType.KNIGHT.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 300
-        whiteMaterial += (position.piecesBB[PieceType.ROOK.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 500
-        whiteMaterial += (position.piecesBB[PieceType.QUEEN.value] and position.colorsBB[Color.WHITE.idx()]).countOneBits() * 1000
-
-        var blackMaterial = 0
-        blackMaterial += (position.piecesBB[PieceType.PAWN.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 100
-        blackMaterial += (position.piecesBB[PieceType.BISHOP.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 300
-        blackMaterial += (position.piecesBB[PieceType.KNIGHT.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 300
-        blackMaterial += (position.piecesBB[PieceType.ROOK.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 500
-        blackMaterial += (position.piecesBB[PieceType.QUEEN.value] and position.colorsBB[Color.BLACK.idx()]).countOneBits() * 1000
-
-        return (whiteMaterial - blackMaterial) * position.turn.scoreFactor()
+        return Eval.evaluate(position, Eval.MASTER_PST) * position.turn.scoreFactor()
     }
 
     fun qSearch(alpha: Score, beta: Score): Score {
@@ -75,7 +61,7 @@ class Engine {
             }
         }
 
-        if (position.isDrawByRepetition()) return Result.draw(remainingDepth)
+        if (position.isDrawByRepetition()) return Result.draw(plyFromRoot)
 
         // probe transposition table
         val ttEntry = tt.get(position.zobristHash)
@@ -106,9 +92,9 @@ class Engine {
 
         if (moves.isEmpty()) {
             if (position.isColorInCheck(position.turn))
-                return Result.checkmated(remainingDepth) // we got checkmated
+                return Result.checkmated(plyFromRoot) // we got checkmated
 
-            return Result.draw(remainingDepth) // stalemate
+            return Result.draw(plyFromRoot) // stalemate
         }
 
         // swap hash move to the front
@@ -175,7 +161,7 @@ class Engine {
             deepestResult = result
 
             val elapsed = TimeSource.Monotonic.markNow() - searchStartTime
-            sendUciInfo(d, elapsed, nodesSearched)
+            sendUciInfo(d, elapsed, nodesSearched, result.score)
 
             if (elapsed > limits.softTime) {
                 return deepestResult

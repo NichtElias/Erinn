@@ -65,6 +65,11 @@ object Bitboards {
     const val FILE_G: Bitboard = FILE_A shl 6
     const val FILE_H: Bitboard = FILE_A shl 7
 
+    val LEFT_RIGHT: BitboardArray = longArrayOf(
+        FILE_A or FILE_B or FILE_C or FILE_D,
+        FILE_E or FILE_F or FILE_G or FILE_H
+    )
+
     inline fun forAllSquares(bb: Bitboard, f: (square: Square) -> Unit) {
         var bb = bb
         while (bb != 0L) {
