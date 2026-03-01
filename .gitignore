@@ -4,6 +4,11 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+### Testing with Fastchess ###
+testbench/
+fastchess.log
+fastchess-config.json
+
 ### PST Tuning ###
 positions.csv
 

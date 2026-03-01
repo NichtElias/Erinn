@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import kotlin.plus
 
 plugins {
     kotlin("jvm") version "2.2.21"
@@ -70,4 +71,75 @@ tasks.register<JavaExec>("tunePst") {
     errorOutput = System.err
 
     jvmArgs("-Xmx12G")
+}
+
+
+tasks.register<FastChessBenchmarkTask>("fastchessBenchmark") {
+    val shadowJarTask = tasks.named<ShadowJar>("shadowJar")
+    builtJar.set(shadowJarTask.flatMap { it.archiveFile })
+    projectRootDir.set(project.rootDir)
+    jarBaseName.set(project.name + "-" + project.version)
+    javaLauncher.set(project.extensions.getByType<JavaToolchainService>().launcherFor {
+        languageVersion.set(java.toolchain.languageVersion)
+    })
+}
+
+
+abstract class FastChessBenchmarkTask @Inject constructor(
+    private val fileSystemOperations: FileSystemOperations,
+    private val execOperations: ExecOperations
+) : DefaultTask() {
+
+    @get:Input
+    @get:Option(option = "id", description = "Identifier for the feature to be benchmarked")
+    abstract val featureId: Property<String>
+
+    @get:Input
+    @get:Option(option = "base", description = "Identifier of the baseline engine version to be benchmarked against")
+    abstract val baselineId: Property<String>
+
+    @get:InputFile
+    abstract val builtJar: RegularFileProperty
+
+    @get:Internal
+    abstract val projectRootDir: DirectoryProperty
+
+    @get:Internal
+    abstract val jarBaseName: Property<String>
+
+    @get:Nested
+    abstract val javaLauncher: Property<JavaLauncher>
+
+    init {
+        baselineId.convention("base")
+        dependsOn("shadowJar")
+    }
+
+    @TaskAction
+    fun runBenchmark() {
+        val id = featureId.get()
+        val baseId = baselineId.get()
+
+        val javaPath = javaLauncher.get().executablePath.asFile.absolutePath
+        val testBenchPath = projectRootDir.get().asFile.toPath().resolve("testbench")
+        val featureJarName = "${jarBaseName.get()}-$id.jar"
+        val baseJarName = "${jarBaseName.get()}-$baseId.jar"
+
+        fileSystemOperations.copy {
+            from(builtJar.get().asFile)
+            into(testBenchPath.toFile())
+            rename { featureJarName }
+        }
+
+        execOperations.exec {
+            commandLine(
+                "fastchess",
+                "-engine", "name=$id", "args=-Xmx300M -jar ${testBenchPath.resolve(featureJarName)}",
+                "-engine", "name=$baseId", "args=-Xmx300M -jar ${testBenchPath.resolve(baseJarName)}",
+                "-each", "cmd=$javaPath", "tc=5+0.2", "-rounds", "100", "-concurrency", "5", "-maxmoves", "100",
+                "-openings", "file=./8moves_v3.pgn", "format=pgn", "order=random", "-srand", "834285",
+                "-autosaveinterval", "0", "-config", "outname=fastchess-config.json"
+            )
+        }
+    }
 }
