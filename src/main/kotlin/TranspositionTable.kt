@@ -19,6 +19,12 @@ class TranspositionTable {
         return null
     }
 
+    fun clear() {
+        for (i in 0..<entries.size) {
+            entries[i] = null;
+        }
+    }
+
     companion object {
         const val TT_SIZE: Int = 0x100000
         const val TT_INDEX_MASK: Long = (TT_SIZE - 1).toLong()

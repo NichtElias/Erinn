@@ -11,6 +11,7 @@ import party.elias.Engine
 import party.elias.Limits
 import party.elias.Move
 import party.elias.Score
+import party.elias.TranspositionTable
 import kotlin.collections.isEmpty
 import kotlin.math.abs
 import kotlin.math.max
@@ -48,7 +49,7 @@ suspend fun run() {
 
         } else if (cmd[0] == "ucinewgame") {
 
-            // TODO
+            engine.tt.clear()
 
         } else if (cmd[0] == "position") {
 
