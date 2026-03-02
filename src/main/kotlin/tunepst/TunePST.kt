@@ -49,7 +49,6 @@ fun main() {
         if (epoch % 10 == 0) {
             if (epoch % 100 == 0) {
                 printPst(parameters)
-                //printKingSafetyParameters(parameters)
             }
 
             val testingLoss = Tuner.loss(batches[0], parameters)
@@ -67,7 +66,6 @@ fun main() {
     }
 
     printPst(parameters)
-    //printKingSafetyParameters(parameters)
 
     for (i in 0..<parameters.size) {
         print("${parameters[i]}, ")
@@ -83,7 +81,7 @@ fun printPst(parameters: IntArray) {
     for (piece in 0..5) {
         val pieceName = PieceType(piece).name
 
-        println("midgame king half $pieceName table")
+        println("midgame king quad $pieceName table")
         for (rank in 7 downTo 0) {
             for (file in 0..7) {
                 print("%6d".format(parameters[Eval.PST_INDEX + Square(rank, file).value * 2 * 2 * 6 + piece]))
@@ -93,7 +91,7 @@ fun printPst(parameters: IntArray) {
 
         println()
 
-        println("endgame king half $pieceName table")
+        println("endgame king quad $pieceName table")
         for (rank in 7 downTo 0) {
             for (file in 0..7) {
                 print("%6d".format(parameters[Eval.PST_INDEX + Square(rank, file).value * 2 * 2 * 6 + 6 + piece]))
@@ -103,7 +101,7 @@ fun printPst(parameters: IntArray) {
 
         println()
 
-        println("midgame non king half $pieceName table")
+        println("midgame non king quad $pieceName table")
         for (rank in 7 downTo 0) {
             for (file in 0..7) {
                 print("%6d".format(parameters[Eval.PST_INDEX + Square(rank, file).value * 2 * 2 * 6 + 12 + piece]))
@@ -113,7 +111,7 @@ fun printPst(parameters: IntArray) {
 
         println()
 
-        println("endgame non king half $pieceName table")
+        println("endgame non king quad $pieceName table")
         for (rank in 7 downTo 0) {
             for (file in 0..7) {
                 print("%6d".format(parameters[Eval.PST_INDEX + Square(rank, file).value * 2 * 2 * 6 + 12 + 6 + piece]))
@@ -123,8 +121,4 @@ fun printPst(parameters: IntArray) {
 
         println()
     }
-}
-
-fun printKingSafetyParameters(parameters: IntArray) {
-    println("movement: ${parameters[Eval.KING_SAFETY_INDEX]} bishop danger: ${parameters[Eval.KING_SAFETY_INDEX + 1]} rook danger: ${parameters[Eval.KING_SAFETY_INDEX + 2]}")
 }

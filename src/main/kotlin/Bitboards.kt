@@ -70,6 +70,13 @@ object Bitboards {
         FILE_E or FILE_F or FILE_G or FILE_H
     )
 
+    val QUADRANTS: BitboardArray = longArrayOf(
+        LEFT_RIGHT[0] and (RANK_1 or RANK_2 or RANK_3 or RANK_4),
+        LEFT_RIGHT[1] and (RANK_1 or RANK_2 or RANK_3 or RANK_4),
+        LEFT_RIGHT[0] and (RANK_5 or RANK_6 or RANK_7 or RANK_8),
+        LEFT_RIGHT[1] and (RANK_5 or RANK_6 or RANK_7 or RANK_8),
+    )
+
     inline fun forAllSquares(bb: Bitboard, f: (square: Square) -> Unit) {
         var bb = bb
         while (bb != 0L) {

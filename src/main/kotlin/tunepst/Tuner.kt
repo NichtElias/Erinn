@@ -74,31 +74,33 @@ object Tuner {
         val mgPhase = Eval.midgamePhase(position)
         val egPhase = 24 - mgPhase
 
-        val whiteKingHalf = Bitboards.LEFT_RIGHT[(position.kingSquares[Color.WHITE.idx()].value and 0b100) ushr 2]
-        val blackKingHalf = Bitboards.LEFT_RIGHT[(position.kingSquares[Color.BLACK.idx()].value and 0b100) ushr 2]
+        val wKingSq = position.kingSquares[Color.WHITE.idx()].value
+        val bKingSq = position.kingSquares[Color.BLACK.idx()].value
+        val whiteKingQuad = Bitboards.QUADRANTS[((wKingSq and 0b100) ushr 2) or ((wKingSq and 0b100000) ushr 4)]
+        val blackKingQuad = Bitboards.QUADRANTS[((bKingSq and 0b100) ushr 2) or ((bKingSq and 0b100000) ushr 4)]
 
-        val whiteKingHalfPieces = whiteKingHalf and position.colorsBB[Color.WHITE.idx()]
-        val whiteNonKingHalfPieces = whiteKingHalf.inv() and position.colorsBB[Color.WHITE.idx()]
-        val blackKingHalfPieces = blackKingHalf and position.colorsBB[Color.BLACK.idx()]
-        val blackNonKingHalfPieces = blackKingHalf.inv() and position.colorsBB[Color.BLACK.idx()]
+        val whiteKingQuadPieces = whiteKingQuad and position.colorsBB[Color.WHITE.idx()]
+        val whiteNonKingQuadPieces = whiteKingQuad.inv() and position.colorsBB[Color.WHITE.idx()]
+        val blackKingQuadPieces = blackKingQuad and position.colorsBB[Color.BLACK.idx()]
+        val blackNonKingQuadPieces = blackKingQuad.inv() and position.colorsBB[Color.BLACK.idx()]
 
         for (p in PieceType.PAWN.idx()..PieceType.KING.idx()) {
-            Bitboards.forAllSquares(position.piecesBB[p] and whiteKingHalfPieces) { square ->
+            Bitboards.forAllSquares(position.piecesBB[p] and whiteKingQuadPieces) { square ->
                 derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + p] = mgPhase.toFloat() / 24
                 derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 6 + p] = egPhase.toFloat() / 24
             }
 
-            Bitboards.forAllSquares(position.piecesBB[p] and whiteNonKingHalfPieces) { square ->
+            Bitboards.forAllSquares(position.piecesBB[p] and whiteNonKingQuadPieces) { square ->
                 derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 12 + p] = mgPhase.toFloat() / 24
                 derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 12 + 6 + p] = egPhase.toFloat() / 24
             }
 
-            Bitboards.forAllSquares(position.piecesBB[p] and blackKingHalfPieces) { square ->
+            Bitboards.forAllSquares(position.piecesBB[p] and blackKingQuadPieces) { square ->
                 derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + p] = -mgPhase.toFloat() / 24
                 derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 6 + p] = -egPhase.toFloat() / 24
             }
 
-            Bitboards.forAllSquares(position.piecesBB[p] and blackNonKingHalfPieces) { square ->
+            Bitboards.forAllSquares(position.piecesBB[p] and blackNonKingQuadPieces) { square ->
                 derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 12 + p] = -mgPhase.toFloat() / 24
                 derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 12 + 6 + p] = -egPhase.toFloat() / 24
             }

@@ -233,6 +233,19 @@ class Board {
         return false
     }
 
+    fun attacksOf(square: Square, pieceType: PieceType, color: Color): Bitboard {
+        return when (pieceType) {
+            PieceType.PAWN -> MoveGen.INDEXED_PAWN_ATTACKS[color.idx()][square.value]
+            PieceType.BISHOP -> Magic.getBishopAttacks(square.value, occupiedBB)
+            PieceType.KNIGHT -> MoveGen.KNIGHT_ATTACKS[square.value]
+            PieceType.ROOK -> Magic.getRookAttacks(square.value, occupiedBB)
+            PieceType.QUEEN -> (Magic.getBishopAttacks(square.value, occupiedBB)
+                    or Magic.getRookAttacks(square.value, occupiedBB))
+            PieceType.KING -> MoveGen.KING_ATTACKS[square.value]
+            else -> 0L // invalid piece
+        }
+    }
+
     fun isColorInCheck(color: Color): Boolean {
         return areSquaresAttackedBy(kingSquares[color.idx()].bb(), color.opponent())
     }
