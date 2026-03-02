@@ -7,12 +7,8 @@ import party.elias.Eval
 import party.elias.PieceType
 import party.elias.Score
 import java.io.File
-import kotlin.math.abs
 import kotlin.math.exp
-import kotlin.math.ln
 import kotlin.math.pow
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 object Tuner {
 
@@ -43,37 +39,37 @@ object Tuner {
         return batches
     }
 
-    fun gradient(samples: Array<Sample>, pst: IntArray): Pair<FloatArray, Float> {
-        val finalFloatD = FloatArray(pst.size)
+    fun gradient(samples: Array<Sample>, parameters: IntArray): Pair<FloatArray, Float> {
+        val finalFloatD = FloatArray(parameters.size)
         var loss = 0F
 
         for (sample in samples) {
-            val matBal = Eval.evaluate(sample.position, pst)
+            val matBal = Eval.evaluate(sample.position, parameters)
             val winProb = winProbability(matBal)
             loss += sampleError(winProb, sample.result) / samples.size
 
             val errD = sampleErrorDerivative(winProb, sample.result)
             val winProbD = winProbabilityDerivative(matBal)
-            val matBalD = evaluationDerivative(sample.position, pst.size)
+            val evalD = evaluationDerivative(sample.position, parameters)
 
             for (p in 0..<finalFloatD.size) {
-                finalFloatD[p] += matBalD[p] * winProbD * errD / samples.size
+                finalFloatD[p] += evalD[p] * winProbD * errD / samples.size
             }
         }
 
         return Pair(finalFloatD, loss)
     }
 
-    fun loss(samples: Array<Sample>, pst: IntArray): Float {
+    fun loss(samples: Array<Sample>, parameters: IntArray): Float {
         var totalLoss = 0F
         for (sample in samples) {
-            totalLoss += sampleError(winProbability(Eval.evaluate(sample.position, pst)), sample.result) / samples.size
+            totalLoss += sampleError(winProbability(Eval.evaluate(sample.position, parameters)), sample.result) / samples.size
         }
         return totalLoss
     }
 
-    fun evaluationDerivative(position: Board, pstSize: Int): FloatArray {
-        val pstDerivatives = FloatArray(pstSize)
+    fun evaluationDerivative(position: Board, parameters: IntArray): FloatArray {
+        val derivatives = FloatArray(parameters.size)
 
         val mgPhase = Eval.midgamePhase(position)
         val egPhase = 24 - mgPhase
@@ -88,27 +84,27 @@ object Tuner {
 
         for (p in PieceType.PAWN.idx()..PieceType.KING.idx()) {
             Bitboards.forAllSquares(position.piecesBB[p] and whiteKingHalfPieces) { square ->
-                pstDerivatives[square.value * 2 * 2 * 6 + p] = mgPhase.toFloat() / 24
-                pstDerivatives[square.value * 2 * 2 * 6 + 6 + p] = egPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + p] = mgPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 6 + p] = egPhase.toFloat() / 24
             }
 
             Bitboards.forAllSquares(position.piecesBB[p] and whiteNonKingHalfPieces) { square ->
-                pstDerivatives[square.value * 2 * 2 * 6 + 12 + p] = mgPhase.toFloat() / 24
-                pstDerivatives[square.value * 2 * 2 * 6 + 12 + 6 + p] = egPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 12 + p] = mgPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 12 + 6 + p] = egPhase.toFloat() / 24
             }
 
             Bitboards.forAllSquares(position.piecesBB[p] and blackKingHalfPieces) { square ->
-                pstDerivatives[square.mirror.value * 2 * 2 * 6 + p] = -mgPhase.toFloat() / 24
-                pstDerivatives[square.mirror.value * 2 * 2 * 6 + 6 + p] = -egPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + p] = -mgPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 6 + p] = -egPhase.toFloat() / 24
             }
 
             Bitboards.forAllSquares(position.piecesBB[p] and blackNonKingHalfPieces) { square ->
-                pstDerivatives[square.mirror.value * 2 * 2 * 6 + 12 + p] = -mgPhase.toFloat() / 24
-                pstDerivatives[square.mirror.value * 2 * 2 * 6 + 12 + 6 + p] = -egPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 12 + p] = -mgPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 12 + 6 + p] = -egPhase.toFloat() / 24
             }
         }
 
-        return pstDerivatives
+        return derivatives
     }
 
     fun winProbability(score: Score): Float =

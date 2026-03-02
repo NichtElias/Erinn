@@ -20,7 +20,7 @@ class Engine {
     var nodesSearched: Long = 0
 
     fun evaluate(): Score {
-        return Eval.evaluate(position, Eval.MASTER_PST) * position.turn.scoreFactor()
+        return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
 
     fun qSearch(alpha: Score, beta: Score): Score {
