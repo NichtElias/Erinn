@@ -195,25 +195,42 @@ class Board {
 
     fun areSquaresAttackedBy(squares: Bitboard, color: Color): Boolean {
         return Bitboards.checkSquares(squares) { square ->
-            // checking if a piece on the square could attack an opponents piece of the same type
-
-            if (MoveGen.INDEXED_PAWN_ATTACKS[color.opponent().idx()][square.value]
-                and piecesBB[PieceType.PAWN.idx()] and colorsBB[color.idx()] != 0L)
-                return@checkSquares true
-            if (Magic.getBishopAttacks(square.value, occupiedBB)
-                and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()])
-                and colorsBB[color.idx()] != 0L)
-                return@checkSquares true
-            if (Magic.getRookAttacks(square.value, occupiedBB)
-                and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()])
-                and colorsBB[color.idx()] != 0L)
-                return@checkSquares true
-            if (MoveGen.KNIGHT_ATTACKS[square.value]
-                and piecesBB[PieceType.KNIGHT.idx()] and colorsBB[color.idx()] != 0L)
-                return@checkSquares true
-
-            return@checkSquares false
+            isSquareAttackedByNonKing(square, color)
         } || MoveGen.KING_ATTACKS[kingSquares[color.idx()].value] and squares != 0L
+    }
+
+    fun attackedSquaresOnBB(bb: Bitboard, attackingColor: Color): Bitboard {
+        var attackedSquares: Bitboard = MoveGen.KING_ATTACKS[kingSquares[attackingColor.idx()].value]
+
+        Bitboards.forAllSquares(bb) { square ->
+            if (isSquareAttackedByNonKing(square, attackingColor)) {
+                attackedSquares = attackedSquares or square.bb()
+            }
+        }
+
+        return attackedSquares and bb
+    }
+
+    private fun isSquareAttackedByNonKing(square: Square, attackingColor: Color): Boolean {
+
+        // checking if a piece on the square could attack an opponents piece of the same type
+
+        if (MoveGen.INDEXED_PAWN_ATTACKS[attackingColor.opponent().idx()][square.value]
+            and piecesBB[PieceType.PAWN.idx()] and colorsBB[attackingColor.idx()] != 0L)
+            return true
+        if (Magic.getBishopAttacks(square.value, occupiedBB)
+            and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()])
+            and colorsBB[attackingColor.idx()] != 0L)
+            return true
+        if (Magic.getRookAttacks(square.value, occupiedBB)
+            and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()])
+            and colorsBB[attackingColor.idx()] != 0L)
+            return true
+        if (MoveGen.KNIGHT_ATTACKS[square.value]
+            and piecesBB[PieceType.KNIGHT.idx()] and colorsBB[attackingColor.idx()] != 0L)
+            return true
+
+        return false
     }
 
     fun isColorInCheck(color: Color): Boolean {
