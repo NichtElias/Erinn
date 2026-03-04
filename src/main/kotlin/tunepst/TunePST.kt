@@ -11,8 +11,8 @@ fun main() {
 
     val startingPieceValues = intArrayOf(100, 300, 300, 500, 900, 0)
 
-    val parameters = IntArray(Eval.PST_SIZE) {
-        i -> if (i in Eval.PST_INDEX..<(Eval.PST_INDEX + Eval.PST_SIZE)) startingPieceValues[i % 6] else 0
+    val parameters = IntArray(Eval.PST_SIZE + Eval.PASSED_SIZE + Eval.BISHOP_PAIR_SIZE) {
+        i -> if (i in Eval.PST_INDEX..<(Eval.PST_INDEX + Eval.PST_SIZE)) startingPieceValues[i % 6] else 30
     }
 
     // 0.12418717: 29, 288, 256, 413, 914, 170, 335, 328, 545, 921
@@ -49,6 +49,8 @@ fun main() {
         if (epoch % 10 == 0) {
             if (epoch % 100 == 0) {
                 printPst(parameters)
+                println("passed: ${parameters[Eval.PASSED_INDEX]}")
+                println("bishop pair: ${parameters[Eval.BISHOP_PAIR_INDEX]}")
             }
 
             val testingLoss = Tuner.loss(batches[0], parameters)
@@ -66,6 +68,8 @@ fun main() {
     }
 
     printPst(parameters)
+    println("passed: ${parameters[Eval.PASSED_INDEX]}")
+    println("bishop pair: ${parameters[Eval.BISHOP_PAIR_INDEX]}")
 
     for (i in 0..<parameters.size) {
         print("${parameters[i]}, ")

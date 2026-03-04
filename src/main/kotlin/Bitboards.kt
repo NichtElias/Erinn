@@ -56,6 +56,17 @@ object Bitboards {
     const val RANK_7: Bitboard = RANK_1 shl 48
     const val RANK_8: Bitboard = RANK_1 shl 56
 
+    val RANKS: BitboardArray = longArrayOf(
+        RANK_1,
+        RANK_2,
+        RANK_3,
+        RANK_4,
+        RANK_5,
+        RANK_6,
+        RANK_7,
+        RANK_8
+    )
+
     const val FILE_A: Bitboard = 0x0101010101010101L
     const val FILE_B: Bitboard = FILE_A shl 1
     const val FILE_C: Bitboard = FILE_A shl 2
@@ -64,6 +75,50 @@ object Bitboards {
     const val FILE_F: Bitboard = FILE_A shl 5
     const val FILE_G: Bitboard = FILE_A shl 6
     const val FILE_H: Bitboard = FILE_A shl 7
+
+    val FILES: BitboardArray = longArrayOf(
+        FILE_A,
+        FILE_B,
+        FILE_C,
+        FILE_D,
+        FILE_E,
+        FILE_F,
+        FILE_G,
+        FILE_H
+    )
+
+    val ADJACENT_FILES: BitboardArray = BitboardArray(8)
+
+    init {
+        for (i in 0..7) {
+            if (i < 7) ADJACENT_FILES[i] = ADJACENT_FILES[i] or FILES[i + 1]
+            if (i > 0) ADJACENT_FILES[i] = ADJACENT_FILES[i] or FILES[i - 1]
+        }
+    }
+
+    val FRONT_SPANS_WHITE: BitboardArray = BitboardArray(64)
+    val FRONT_SPANS_BLACK: BitboardArray = BitboardArray(64)
+
+    init {
+        for (r in 0..7) {
+            for (f in 0..7) {
+                for (rr in 0..7) {
+                    val i = r shl 3 or f
+                    if (rr > r)
+                        FRONT_SPANS_WHITE[i] = FRONT_SPANS_WHITE[i] or RANKS[rr]
+                    if (rr < r)
+                        FRONT_SPANS_BLACK[i] = FRONT_SPANS_BLACK[i] or RANKS[rr]
+                }
+            }
+        }
+        for (i in 0..63) {
+            FRONT_SPANS_WHITE[i] = FRONT_SPANS_WHITE[i] and (ADJACENT_FILES[i and 7] or FILES[i and 7])
+            FRONT_SPANS_BLACK[i] = FRONT_SPANS_BLACK[i] and (ADJACENT_FILES[i and 7] or FILES[i and 7])
+        }
+    }
+
+    const val LIGHT_SQUARES: Bitboard = 0x55aa55aa55aa55aa
+    val DARK_SQUARES: Bitboard = LIGHT_SQUARES.inv()
 
     val LEFT_RIGHT: BitboardArray = longArrayOf(
         FILE_A or FILE_B or FILE_C or FILE_D,

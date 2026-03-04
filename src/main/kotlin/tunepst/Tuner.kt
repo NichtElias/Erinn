@@ -106,6 +106,30 @@ object Tuner {
             }
         }
 
+        val whitePawns = position.piecesBB[PieceType.PAWN.idx()] and position.colorsBB[Color.WHITE.idx()]
+        val blackPawns = position.piecesBB[PieceType.PAWN.idx()] and position.colorsBB[Color.BLACK.idx()]
+        Bitboards.forAllSquares(whitePawns) { square ->
+            if (Bitboards.FRONT_SPANS_WHITE[square.value] and blackPawns == 0L) {
+                derivatives[Eval.PASSED_INDEX] += egPhase.toFloat() / 24
+            }
+        }
+
+        Bitboards.forAllSquares(blackPawns) { square ->
+            if (Bitboards.FRONT_SPANS_BLACK[square.value] and whitePawns == 0L) {
+                derivatives[Eval.PASSED_INDEX] -= egPhase.toFloat() / 24
+            }
+        }
+
+        val whiteBishops = position.piecesBB[PieceType.BISHOP.idx()] and position.colorsBB[Color.WHITE.idx()]
+        if (whiteBishops and Bitboards.LIGHT_SQUARES != 0L && whiteBishops and Bitboards.DARK_SQUARES != 0L) {
+            derivatives[Eval.BISHOP_PAIR_INDEX] += egPhase.toFloat() / 24
+        }
+
+        val blackBishops = position.piecesBB[PieceType.BISHOP.idx()] and position.colorsBB[Color.BLACK.idx()]
+        if (blackBishops and Bitboards.LIGHT_SQUARES != 0L && blackBishops and Bitboards.DARK_SQUARES != 0L) {
+            derivatives[Eval.BISHOP_PAIR_INDEX] -= egPhase.toFloat() / 24
+        }
+
         return derivatives
     }
 
