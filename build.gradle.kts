@@ -98,6 +98,10 @@ abstract class FastChessBenchmarkTask @Inject constructor(
     @get:Option(option = "base", description = "Identifier of the baseline engine version to be benchmarked against")
     abstract val baselineId: Property<String>
 
+    @get:Input
+    @get:Option(option = "rounds", description = "How many rounds to play")
+    abstract val roundCount: Property<Int>
+
     @get:InputFile
     abstract val builtJar: RegularFileProperty
 
@@ -112,6 +116,7 @@ abstract class FastChessBenchmarkTask @Inject constructor(
 
     init {
         baselineId.convention("base")
+        roundCount.convention(100)
         dependsOn("shadowJar")
     }
 
@@ -136,7 +141,7 @@ abstract class FastChessBenchmarkTask @Inject constructor(
                 "fastchess",
                 "-engine", "name=$id", "args=-Xmx300M -jar ${testBenchPath.resolve(featureJarName)}",
                 "-engine", "name=$baseId", "args=-Xmx300M -jar ${testBenchPath.resolve(baseJarName)}",
-                "-each", "cmd=$javaPath", "tc=5+0.2", "-rounds", "100", "-concurrency", "5", "-maxmoves", "100",
+                "-each", "cmd=$javaPath", "tc=5+0.2", "-rounds", "${roundCount.get()}", "-concurrency", "5", "-maxmoves", "100",
                 "-openings", "file=./8moves_v3.pgn", "format=pgn", "order=random", "-srand", "834285",
                 "-autosaveinterval", "0", "-config", "outname=fastchess-config.json"
             )
