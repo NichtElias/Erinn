@@ -30,15 +30,7 @@ class Engine {
         if (bestScore >= beta) return bestScore
         if (bestScore > alpha) alpha = bestScore
 
-        val captures = position.genMoves(capturesOnly = true)
-
-        for (move in captures.sortedWith { moveA, moveB ->
-            val vDiff = moveB.capture.type().idx() - moveA.capture.type().idx() // works because they're ordered by importance
-
-            if (vDiff != 0) return@sortedWith vDiff
-
-            return@sortedWith position.pieces[moveA.src.value].type().idx() - position.pieces[moveB.src.value].type().idx()
-        }) {
+        position.forMoves(capturesOnly = true) { move ->
             val stateInfo = position.doMove(move)
             val score = -qSearch(-beta, -alpha)
             position.undoMove(move, stateInfo)
@@ -85,33 +77,14 @@ class Engine {
 
         var alpha = alpha
 
-        val moves = position.genMoves() as ArrayList
         var bestScore: Score = -MATE_SCORE
         var bestMove: Move = Move.NULL_MOVE
         var bestHorizonDepth = 0
-
-        if (moves.isEmpty()) {
-            if (position.isColorInCheck(position.turn))
-                return Result.checkmated(plyFromRoot) // we got checkmated
-
-            return Result.draw(plyFromRoot) // stalemate
-        }
-
-        // swap hash move to the front
-        if (ttEntry?.bestMove != null) {
-            for (i in 0..moves.size) {
-                if (moves[i] == ttEntry.bestMove) {
-                    val firstMove = moves[0]
-                    moves[0] = moves[i]
-                    moves[i] = firstMove
-                    break
-                }
-            }
-        }
+        var moveCount = 0
 
         var alphaRaised = false
 
-        for (move in moves) {
+        position.forMoves(hashMove = ttEntry?.bestMove) { move ->
             val stateInfo = position.doMove(move)
             val result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha)
             val score = -result.score
@@ -133,6 +106,15 @@ class Engine {
                     plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move)
                 return Result(bestMove, bestScore, bestHorizonDepth)
             }
+
+            moveCount++
+        }
+
+        if (moveCount == 0) {
+            if (position.isColorInCheck(position.turn))
+                return Result.checkmated(plyFromRoot) // we got checkmated
+
+            return Result.draw(plyFromRoot) // stalemate
         }
 
         if (alphaRaised) { // PV node
@@ -172,12 +154,10 @@ class Engine {
     }
 
     fun perft(depth: Int): Long {
-        val moves = position.genMoves()
-
-        if (depth == 1) return moves.size.toLong()
+        if (depth == 0) return 1L
 
         var nodes = 0L
-        for (move in moves) {
+        position.forMoves { move ->
             val stateInfo = position.doMove(move)
             nodes += perft(depth - 1)
             position.undoMove(move, stateInfo)
@@ -186,11 +166,9 @@ class Engine {
     }
 
     fun perftDivide(depth: Int): Map<Move, Long> {
-        val moves = position.genMoves()
-
         val results = HashMap<Move, Long>()
 
-        for (move in moves) {
+        position.forMoves { move ->
             if (depth == 1) {
                 results[move] = 1
             } else {

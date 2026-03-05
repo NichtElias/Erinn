@@ -233,6 +233,21 @@ class Board {
         return false
     }
 
+    fun attackersTargeting(square: Square, attackingColor: Color): Bitboard {
+        val attackingPieces = colorsBB[attackingColor.idx()]
+
+        return ((MoveGen.INDEXED_PAWN_ATTACKS[attackingColor.opponent().idx()][square.value]
+                and piecesBB[PieceType.PAWN.idx()] and attackingPieces)
+                or (Magic.getBishopAttacks(square.value, occupiedBB)
+                and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()]) and attackingPieces)
+                or (Magic.getRookAttacks(square.value, occupiedBB)
+                and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()]) and attackingPieces)
+                or (MoveGen.KNIGHT_ATTACKS[square.value]
+                and piecesBB[PieceType.KNIGHT.idx()] and attackingPieces)
+                or (MoveGen.KING_ATTACKS[square.value]
+                and piecesBB[PieceType.KING.idx()] and attackingPieces))
+    }
+
     fun attacksOf(square: Square, pieceType: PieceType, color: Color): Bitboard {
         return when (pieceType) {
             PieceType.PAWN -> MoveGen.INDEXED_PAWN_ATTACKS[color.idx()][square.value]
@@ -250,95 +265,61 @@ class Board {
         return areSquaresAttackedBy(kingSquares[color.idx()].bb(), color.opponent())
     }
 
-    fun genPseudoLegalMoves(capturesOnly: Boolean = false): List<Move> {
-        val moves = ArrayList<Move>()
+    fun isInCheckAfter(move: Move): Boolean {
+        val currentColor = turn
 
-        for (i in 0..<pieces.size) {
-            val piece = pieces[i]
-            val src = Square(i)
-            if (piece.color() == turn) {
-                when (piece.type()) {
-                    PieceType.KNIGHT -> {
-                        // knight moves and attacks
-                        Bitboards.forAllSquares(
-                            MoveGen.KNIGHT_ATTACKS[i] and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
-                        ) { square ->
-                            moves.add(Move(src, square, pieces[square.value]))
-                        }
+        val stateInfo = doMove(move)
+        val inCheck = isColorInCheck(currentColor)
+        undoMove(move, stateInfo)
+
+        return inCheck
+    }
+
+    inline fun forMoves(capturesOnly: Boolean = false, hashMove: Move? = null, moveConsumer: (Move) -> Unit) {
+        var hashMove = hashMove
+
+        if (hashMove != null && isLegalMove(hashMove))
+            moveConsumer(hashMove)
+        else
+            hashMove = null
+
+        var attacks = 0L
+        Bitboards.forAllSquares(colorsBB[turn.idx()]) { square ->
+            val piece = pieces[square.value]
+            attacks = attacks or attacksOf(square, piece.type(), piece.color())
+        }
+        attacks = attacks and colorsBB[turn.opponent().idx()]
+
+        // mvv-lva capture move generation
+        for (victimType in MoveGen.MVV_PIECES) {
+
+            // squeeze in en passant at the front of all the other x takes pawn captures
+            if (victimType == PieceType.PAWN.idx()) {
+                if (epSquare != Square(-1)) {
+                    Bitboards.forAllSquares(MoveGen.INDEXED_PAWN_ATTACKS[turn.opponent().idx()][epSquare.value] and
+                            piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]
+                    ) { src ->
+                        val epMove = Move(src, epSquare, Piece(turn.opponent(), PieceType.PAWN), isEp = true)
+                        if (!isInCheckAfter(epMove) && epMove != hashMove)
+                            moveConsumer(epMove)
                     }
+                }
+            }
 
-                    PieceType.PAWN -> {
-                        // normal pawn attacks
-                        Bitboards.forAllSquares(
-                            MoveGen.INDEXED_PAWN_ATTACKS[turn.idx()][i] and colorsBB[turn.opponent().idx()]
-                        ) { square ->
-                            if (square.rank == turn.opponent().backRank()) {
-                                moves.add(Move(src, square, pieces[square.value], promotion = PieceType.QUEEN))
-                                moves.add(Move(src, square, pieces[square.value], promotion = PieceType.KNIGHT))
-                                moves.add(Move(src, square, pieces[square.value], promotion = PieceType.ROOK))
-                                moves.add(Move(src, square, pieces[square.value], promotion = PieceType.BISHOP))
+            Bitboards.forAllSquares(piecesBB[victimType] and attacks) { victimSquare ->
+                val aggressorBB = attackersTargeting(victimSquare, turn)
+                for (aggressorType in MoveGen.LVA_PIECES) {
+                    Bitboards.forAllSquares(piecesBB[aggressorType] and aggressorBB) { aggressorSquare ->
+                        val captureMove = Move(aggressorSquare, victimSquare, pieces[victimSquare.value])
+
+                        if (!isInCheckAfter(captureMove)) {
+                            if (aggressorType == PieceType.PAWN.idx() && victimSquare.rank == turn.opponent().backRank()) {
+                                captureMove.forPromotionVariants { m ->
+                                    if (m != hashMove) moveConsumer(m)
+                                }
                             } else {
-                                moves.add(Move(src, square, pieces[square.value]))
+                                if (captureMove != hashMove) moveConsumer(captureMove)
                             }
-                        }
-                        // pawn moves
-                        if (!capturesOnly) {
-                            val front = Square(i + MoveGen.PAWN_DIRECTIONS[turn.idx()])
-                            if (pieces[front.value] == Piece.NONE) {
-                                if (front.rank == turn.opponent().backRank()) {
-                                    moves.add(Move(src, front, Piece.NONE, promotion = PieceType.QUEEN))
-                                    moves.add(Move(src, front, Piece.NONE, promotion = PieceType.KNIGHT))
-                                    moves.add(Move(src, front, Piece.NONE, promotion = PieceType.ROOK))
-                                    moves.add(Move(src, front, Piece.NONE, promotion = PieceType.BISHOP))
-                                } else {
-                                    moves.add(Move(src, front, Piece.NONE))
-                                }
-
-                                val doublePushSquare = Square(i + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
-                                if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
-                                    moves.add(Move(src, doublePushSquare, Piece.NONE))
-                                }
-                            }
-                        }
-                    }
-
-                    PieceType.KING -> {
-                        // normal king moves and attacks
-                        Bitboards.forAllSquares(
-                            MoveGen.KING_ATTACKS[i] and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
-                        ) { square ->
-                            moves.add(Move(src, square, pieces[square.value]))
-                        }
-                    }
-
-                    PieceType.BISHOP -> {
-                        // bishop moves and attacks
-                        Bitboards.forAllSquares(
-                            Magic.getBishopAttacks(src.value, occupiedBB)
-                                    and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
-                        ) { square ->
-                            moves.add(Move(src, square, pieces[square.value]))
-                        }
-                    }
-
-                    PieceType.ROOK -> {
-                        // rook moves and attacks
-                        Bitboards.forAllSquares(
-                            Magic.getRookAttacks(src.value, occupiedBB)
-                                    and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
-                        ) { square ->
-                            moves.add(Move(src, square, pieces[square.value]))
-                        }
-                    }
-
-                    PieceType.QUEEN -> {
-                        // queen moves and attacks
-                        Bitboards.forAllSquares(
-                            (Magic.getRookAttacks(src.value, occupiedBB)
-                                    or Magic.getBishopAttacks(src.value, occupiedBB)
-                                    ) and if (capturesOnly) colorsBB[turn.opponent().idx()] else colorsBB[turn.idx()].inv()
-                        ) { square ->
-                            moves.add(Move(src, square, pieces[square.value]))
                         }
                     }
                 }
@@ -351,38 +332,103 @@ class Board {
                 if (castlingRights and Square.CASTLING_ROOK_SQUARES[i].bb() != 0L
                     && Bitboards.CASTLING_EMPTY[i] and occupiedBB == 0L
                     && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[i], turn.opponent())
-                ) {
-                    moves.add(Move(Square.KING_STARTS[i / 2], Square.CASTLING_TARGET_SQUARES[i], Piece.NONE, castle = i))
+                ) { // cannot be illegal because it already checks if king will move into check
+                    val castlingMove = Move(Square.KING_STARTS[i / 2], Square.CASTLING_TARGET_SQUARES[i], Piece.NONE, castle = i)
+                    if (castlingMove != hashMove) moveConsumer(castlingMove)
                 }
             }
         }
 
-
-        // en passant
-        if (epSquare != Square(-1)) {
-            Bitboards.forAllSquares(MoveGen.INDEXED_PAWN_ATTACKS[turn.opponent().idx()][epSquare.value] and
-                    piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]
-            ) { src ->
-                moves.add(Move(src, epSquare, Piece(turn.opponent(), PieceType.PAWN), isEp = true))
+        // generate missing non-captures
+        if (!capturesOnly) {
+            Bitboards.forAllSquares(colorsBB[turn.idx()]) { src ->
+                val piece = pieces[src.value]
+                if (piece.type() != PieceType.PAWN) {
+                    Bitboards.forAllSquares(
+                        attacksOf(src, piece.type(), piece.color()) and occupiedBB.inv()
+                    ) { target ->
+                        val move = Move(src, target, Piece.NONE)
+                        if (!isInCheckAfter(move) && move != hashMove)
+                            moveConsumer(move)
+                    }
+                }
             }
         }
 
-        return moves
+        // generate pawn non-captures
+        if (!capturesOnly) {
+            Bitboards.forAllSquares(piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]) { src ->
+                val front = Square(src.value + MoveGen.PAWN_DIRECTIONS[turn.idx()])
+                if (pieces[front.value] == Piece.NONE) {
+                    val singlePushMove = Move(src, front, Piece.NONE)
+
+                    if (front.rank == turn.opponent().backRank()) {
+                        if (!isInCheckAfter(singlePushMove))
+                            singlePushMove.forPromotionVariants { m ->
+                                if (m != hashMove) moveConsumer(m)
+                            }
+                    } else {
+                        // generate double push
+                        val doublePushSquare = Square(src.value + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
+                        if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
+                            val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
+                            if (!isInCheckAfter(doublePushMove) && doublePushMove != hashMove)
+                                moveConsumer(doublePushMove)
+                        }
+
+                        if (!isInCheckAfter(singlePushMove) && singlePushMove != hashMove)
+                            moveConsumer(singlePushMove)
+                    }
+                }
+            }
+        }
     }
 
-    fun genMoves(capturesOnly: Boolean = false): List<Move> {
-        val moves = genPseudoLegalMoves(capturesOnly)
-        val currentColor = turn
+    fun isPseudoLegalMove(move: Move): Boolean {
+        val piece = pieces[move.src.value]
+        if (piece == Piece.NONE) return false // can't move null piece
+        if (piece.color() != turn) return false // can't move opponent's piece
 
-        return moves.filter(fun(move: Move): Boolean {
-            val stateInfo = doMove(move)
+        if (move.isEp) {
+            if (move.dst == epSquare && epSquare.bb() and MoveGen.INDEXED_PAWN_ATTACKS[turn.idx()][move.src.value] != 0L) {
+                return true // this is a legal ep move
+            }
+        }
 
-            val legal = !isColorInCheck(currentColor)
+        if (pieces[move.dst.value] != move.capture) return false // check if the right piece is captured
 
-            undoMove(move, stateInfo)
+        if (piece.type() == PieceType.PAWN && move.capture == Piece.NONE) {
+            val front = Square(move.src.value + MoveGen.PAWN_DIRECTIONS[turn.idx()])
+            if (move.dst == front) return true // this is just a normal pawn push
 
-            return legal
-        })
+            if (move.src.rank != turn.pawnStartingRank()) return false // can't do double push if not on starting rank
+            if (pieces[front.value] != Piece.NONE) return false // can't do double push if there's something in the way
+            val doublePushSquare = Square(move.src.value + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
+            return move.dst == doublePushSquare // last possible pawn non-capture is double push, only need to check correct dst square now
+        } else {
+            val validTargetSquares = (attacksOf(move.src, piece.type(), piece.color())
+                    and colorsBB[turn.idx()].inv())
+
+            if (validTargetSquares and move.dst.bb() != 0L) return true
+
+            // now only castling is possible
+            if (move.castle == -1) return false
+
+            return (castlingRights and Square.CASTLING_ROOK_SQUARES[move.castle].bb() != 0L
+                && Bitboards.CASTLING_EMPTY[move.castle] and occupiedBB == 0L
+                && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[move.castle], turn.opponent())
+                && move.src == Square.KING_STARTS[move.castle / 2]
+                && move.dst == Square.CASTLING_TARGET_SQUARES[move.castle]
+                && move.capture == Piece.NONE)
+        }
+    }
+
+    /**
+     * Checks pseudolegality and if it puts us into check. Use only for testing if hash move is legal and similar cases.
+     * Don't use in move generation.
+     */
+    fun isLegalMove(move: Move): Boolean {
+        return isPseudoLegalMove(move) && !isInCheckAfter(move)
     }
 
     override fun toString(): String {

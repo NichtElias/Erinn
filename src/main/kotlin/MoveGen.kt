@@ -59,6 +59,13 @@ object MoveGen {
 
     val PAWN_DIRECTIONS: IntArray = intArrayOf(-8, 8) // these are square offsets, indexed by color
 
+    // most valuable victim order; does not include king as king can never be in a position where it would be captured (because that would be checkmate)
+    val MVV_PIECES: IntArray = intArrayOf(4, 3, 1, 2, 0) // these are piece type values
+    val MVV_ORDER: IntArray = intArrayOf(5, 3, 4, 2, 1, 0) // these are values used for sorting
+    // least valuable aggressor order; this one includes king
+    val LVA_PIECES: IntArray = intArrayOf(0, 2, 1, 3, 4, 5)
+    val LVA_ORDER: IntArray = intArrayOf(0, 2, 1, 3, 4, 5)
+
     fun slidingMoves(sq: Square, blockers: Long, relativeMovements: Array<Pair<Int, Int>>): Long {
         var bb = 0L
 

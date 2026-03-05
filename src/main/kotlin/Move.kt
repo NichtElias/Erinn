@@ -17,6 +17,12 @@ data class Move(
         return "$srcUci$dstUci$promUci"
     }
 
+    inline fun forPromotionVariants(f: (Move) -> Unit) {
+        for (pp in PieceType.PROMOTABLE_TO) {
+            f(copy(promotion = pp))
+        }
+    }
+
     companion object {
         val NULL_MOVE = Move(Square(0), Square(0), Piece.NONE)
 
