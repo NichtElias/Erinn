@@ -47,6 +47,8 @@ class Engine {
     }
 
     fun search(plyFromRoot: Int, remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Result {
+        var remainingDepth = remainingDepth
+
         if (nodesSearched++ and 4095 == 0L) {
             if (stop) {
                 return Result.ABORT
@@ -72,6 +74,10 @@ class Engine {
                 }
             }
         }
+
+        val inCheck = position.isColorInCheck(position.turn)
+
+        if (inCheck && remainingDepth == 0) remainingDepth++ // check extension
 
         if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(alpha, beta), plyFromRoot)
 
@@ -111,7 +117,7 @@ class Engine {
         }
 
         if (moveCount == 0) {
-            if (position.isColorInCheck(position.turn))
+            if (inCheck)
                 return Result.checkmated(plyFromRoot) // we got checkmated
 
             return Result.draw(plyFromRoot) // stalemate
