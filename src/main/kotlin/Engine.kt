@@ -55,7 +55,7 @@ class Engine {
             }
         }
 
-        if (position.isDrawByRepetition()) return Result.draw(plyFromRoot)
+        if (position.isDrawByRepetition()) return Result.draw()
 
         // probe transposition table
         val ttEntry = tt.get(position.zobristHash)
@@ -64,13 +64,13 @@ class Engine {
                 val adjustedScore = ttEntry.getAdjustedScore(position.turn, plyFromRoot)
                 when (ttEntry.bound) {
                     TranspositionTable.BoundType.EXACT ->
-                        return Result(ttEntry.bestMove!!, adjustedScore, ttEntry.draft + plyFromRoot)
+                        return Result(ttEntry.bestMove!!, adjustedScore)
 
                     TranspositionTable.BoundType.LOWER -> if (adjustedScore >= beta)
-                        return Result(Move.NULL_MOVE, adjustedScore, ttEntry.draft + plyFromRoot)
+                        return Result(Move.NULL_MOVE, adjustedScore)
 
                     TranspositionTable.BoundType.UPPER -> if (adjustedScore < alpha)
-                        return Result(Move.NULL_MOVE, adjustedScore, ttEntry.draft + plyFromRoot)
+                        return Result(Move.NULL_MOVE, adjustedScore)
                 }
             }
         }
@@ -79,13 +79,12 @@ class Engine {
 
         if (inCheck && remainingDepth == 0) remainingDepth++ // check extension
 
-        if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(alpha, beta), plyFromRoot)
+        if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(alpha, beta))
 
         var alpha = alpha
 
         var bestScore: Score = -MATE_SCORE
         var bestMove: Move = Move.NULL_MOVE
-        var bestHorizonDepth = 0
         var moveCount = 0
 
         var alphaRaised = false
@@ -101,16 +100,15 @@ class Engine {
             if (score > bestScore) {
                 bestScore = score
                 bestMove = move
-                bestHorizonDepth = result.actualHorizonDepth
                 if (score > alpha) {
                     alpha = score
                     alphaRaised = true
                 }
             }
             if (score >= beta) {
-                tt.store(position.zobristHash, bestHorizonDepth - plyFromRoot, position.turn,
+                tt.store(position.zobristHash, remainingDepth, position.turn,
                     plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move)
-                return Result(bestMove, bestScore, bestHorizonDepth)
+                return Result(bestMove, bestScore)
             }
 
             moveCount++
@@ -120,22 +118,22 @@ class Engine {
             if (inCheck)
                 return Result.checkmated(plyFromRoot) // we got checkmated
 
-            return Result.draw(plyFromRoot) // stalemate
+            return Result.draw() // stalemate
         }
 
         if (alphaRaised) { // PV node
-            tt.store(position.zobristHash, bestHorizonDepth - plyFromRoot, position.turn,
+            tt.store(position.zobristHash, remainingDepth, position.turn,
                 plyFromRoot, bestScore, TranspositionTable.BoundType.EXACT, bestMove)
         } else { // all node
-            tt.store(position.zobristHash, bestHorizonDepth - plyFromRoot, position.turn,
+            tt.store(position.zobristHash, remainingDepth, position.turn,
                 plyFromRoot, bestScore, TranspositionTable.BoundType.UPPER)
         }
 
-        return Result(bestMove, bestScore, bestHorizonDepth)
+        return Result(bestMove, bestScore)
     }
 
     fun iterDeep(limits: Limits): Result {
-        var deepestResult = Result(Move.NULL_MOVE, -MATE_SCORE, 0)
+        var deepestResult = Result(Move.NULL_MOVE, -MATE_SCORE)
 
         searchStartTime = TimeSource.Monotonic.markNow()
         nodesSearched = 0
@@ -194,16 +192,16 @@ class Engine {
         const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
     }
 
-    data class Result(val move: Move, val score: Score, val actualHorizonDepth: Int, val aborted: Boolean = false) {
+    data class Result(val move: Move, val score: Score, val aborted: Boolean = false) {
         companion object {
-            val ABORT = Result(Move.NULL_MOVE, -MATE_SCORE, 0, aborted = true)
+            val ABORT = Result(Move.NULL_MOVE, -MATE_SCORE,  aborted = true)
 
             fun checkmated(depth: Int): Result {
-                return Result(Move.NULL_MOVE, -MATE_SCORE + depth, depth)
+                return Result(Move.NULL_MOVE, -MATE_SCORE + depth)
             }
 
-            fun draw(depth: Int): Result {
-                return Result(Move.NULL_MOVE, 0, depth)
+            fun draw(): Result {
+                return Result(Move.NULL_MOVE, 0)
             }
         }
     }
