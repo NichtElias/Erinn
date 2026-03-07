@@ -22,21 +22,27 @@ fun main() {
 
     var lr = 750F
 
-    val batchCount = 24
-    val batches = Tuner.loadBatches(batchCount, 50000)
+    val batchCount = 20
+    val batchSize = 50000
+    var megaBatchIndex = 0
+    var batches: ArrayList<Array<Tuner.Sample>> = ArrayList()
     val gradientAcc = FloatArray(parameters.size)
 
-    println("loaded ${batches.size} batches")
+    val testBatch = Tuner.loadBatches(0, 1, batchSize)[0]
 
     val lastFewLosses = ArrayList<Float>()
 
     for (epoch in 0..1000) {
+        if (epoch % 100 == 0) {
+            batches = Tuner.loadBatches(megaBatchIndex++ * batchCount * batchSize + batchSize, batchCount, batchSize)
+            println("loaded ${batches.size} batches")
+        }
 
         var trainingLoss = 0F
-        for (batchIndex in 1..<batchCount) {
+        for (batchIndex in 0..<batchCount) {
             val (g, batchLoss) = Tuner.gradient(batches[batchIndex], parameters)
 
-            trainingLoss += batchLoss / (batchCount - 1)
+            trainingLoss += batchLoss / batchCount
 
             for (i in 0..<gradientAcc.size) {
                 gradientAcc[i] += g[i] * lr
@@ -53,7 +59,7 @@ fun main() {
                 println("bishop pair: ${parameters[Eval.BISHOP_PAIR_INDEX]}")
             }
 
-            val testingLoss = Tuner.loss(batches[0], parameters)
+            val testingLoss = Tuner.loss(testBatch, parameters)
             val lossTrend = testingLoss - lastFewLosses.average()
 
             println("epoch: $epoch lr: $lr loss: ${lossFormat.format(trainingLoss)} testing loss: ${lossFormat.format(testingLoss)} (${lossFormat.format(lossTrend)})")

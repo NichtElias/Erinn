@@ -12,7 +12,7 @@ import kotlin.math.pow
 
 object Tuner {
 
-    fun loadBatches(maxBatchCount: Int, batchSize: Int): ArrayList<Array<Sample>> {
+    fun loadBatches(skipLines: Int, maxBatchCount: Int, batchSize: Int): ArrayList<Array<Sample>> {
 
         val reader = File("positions.csv").bufferedReader()
 
@@ -20,6 +20,12 @@ object Tuner {
 
         reader.useLines { lines ->
             val lineIt = lines.iterator()
+
+            for (i in 0..<skipLines) {
+                try {
+                    lineIt.next()
+                } catch (e: NoSuchElementException) {}
+            }
 
             for (i in 0..<maxBatchCount) {
                 try {
@@ -31,7 +37,7 @@ object Tuner {
 
                     batches.add(currentBatch)
                 } catch (e: NoSuchElementException) {
-
+                    break
                 }
             }
         }
