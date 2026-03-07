@@ -67,6 +67,11 @@ object Bitboards {
         RANK_8
     )
 
+    val PAWN_NON_PROMOTION_AREAS = longArrayOf(
+        RANK_3 or RANK_4 or RANK_5 or RANK_6 or RANK_7,
+        RANK_2 or RANK_3 or RANK_4 or RANK_5 or RANK_6
+    )
+
     const val FILE_A: Bitboard = 0x0101010101010101L
     const val FILE_B: Bitboard = FILE_A shl 1
     const val FILE_C: Bitboard = FILE_A shl 2
@@ -118,7 +123,7 @@ object Bitboards {
     }
 
     const val LIGHT_SQUARES: Bitboard = 0x55aa55aa55aa55aa
-    val DARK_SQUARES: Bitboard = LIGHT_SQUARES.inv()
+    const val DARK_SQUARES: Bitboard = LIGHT_SQUARES.inv()
 
     val LEFT_RIGHT: BitboardArray = longArrayOf(
         FILE_A or FILE_B or FILE_C or FILE_D,

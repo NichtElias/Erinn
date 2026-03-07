@@ -283,6 +283,21 @@ class Board {
         else
             hashMove = null
 
+        // generate pawn non-capture promotions
+        if (!capturesOnly) {
+            Bitboards.forAllSquares(piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]
+                    and Bitboards.RANKS[turn.opponent().pawnStartingRank()]) { src ->
+                val front = Square(src.value + MoveGen.PAWN_DIRECTIONS[turn.idx()])
+                if (pieces[front.value] == Piece.NONE) {
+                    val singlePushMove = Move(src, front, Piece.NONE)
+                    if (!isInCheckAfter(singlePushMove))
+                        singlePushMove.forPromotionVariants { m ->
+                            if (m != hashMove) moveConsumer(m)
+                        }
+                }
+            }
+        }
+
         var attacks = 0L
         Bitboards.forAllSquares(colorsBB[turn.idx()]) { square ->
             val piece = pieces[square.value]
@@ -355,30 +370,26 @@ class Board {
             }
         }
 
-        // generate pawn non-captures
+        // generate pawn non-capture non-promotion moves
         if (!capturesOnly) {
-            Bitboards.forAllSquares(piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]) { src ->
+            Bitboards.forAllSquares(piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]
+                    and Bitboards.PAWN_NON_PROMOTION_AREAS[turn.idx()]) { src ->
                 val front = Square(src.value + MoveGen.PAWN_DIRECTIONS[turn.idx()])
                 if (pieces[front.value] == Piece.NONE) {
                     val singlePushMove = Move(src, front, Piece.NONE)
 
-                    if (front.rank == turn.opponent().backRank()) {
-                        if (!isInCheckAfter(singlePushMove))
-                            singlePushMove.forPromotionVariants { m ->
-                                if (m != hashMove) moveConsumer(m)
-                            }
-                    } else {
-                        // generate double push
-                        val doublePushSquare = Square(src.value + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
-                        if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
-                            val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
-                            if (!isInCheckAfter(doublePushMove) && doublePushMove != hashMove)
-                                moveConsumer(doublePushMove)
-                        }
-
-                        if (!isInCheckAfter(singlePushMove) && singlePushMove != hashMove)
-                            moveConsumer(singlePushMove)
+                    // generate double push
+                    val doublePushSquare = Square(src.value + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
+                    if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
+                        val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
+                        if (!isInCheckAfter(doublePushMove) && doublePushMove != hashMove)
+                            moveConsumer(doublePushMove)
                     }
+
+                    // generate single push
+                    if (!isInCheckAfter(singlePushMove) && singlePushMove != hashMove)
+                        moveConsumer(singlePushMove)
+
                 }
             }
         }
