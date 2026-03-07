@@ -12,7 +12,7 @@ fun main() {
     val startingPieceValues = intArrayOf(100, 300, 300, 500, 900, 0)
 
     val parameters = IntArray(Eval.PST_SIZE + Eval.PASSED_SIZE + Eval.BISHOP_PAIR_SIZE) {
-        i -> if (i in Eval.PST_INDEX..<(Eval.PST_INDEX + Eval.PST_SIZE)) startingPieceValues[i % 6] else 30
+        i -> if (i in Eval.PST_INDEX..<(Eval.PST_INDEX + Eval.PST_SIZE)) startingPieceValues[i / (2 * 2 * 64)] else 0
     }
 
     // 0.12418717: 29, 288, 256, 413, 914, 170, 335, 328, 545, 921
@@ -71,10 +71,7 @@ fun main() {
     println("passed: ${parameters[Eval.PASSED_INDEX]}")
     println("bishop pair: ${parameters[Eval.BISHOP_PAIR_INDEX]}")
 
-    for (i in 0..<parameters.size) {
-        print("${parameters[i]}, ")
-    }
-    println()
+    printParameters(parameters, 0, parameters.size)
 
     val testingLoss = Tuner.loss(batches[0], parameters)
     println("final results: testing loss: $testingLoss")
@@ -86,43 +83,35 @@ fun printPst(parameters: IntArray) {
         val pieceName = PieceType(piece).name
 
         println("midgame king quad $pieceName table")
-        for (rank in 7 downTo 0) {
-            for (file in 0..7) {
-                print("%6d".format(parameters[Eval.PST_INDEX + Square(rank, file).value * 2 * 2 * 6 + piece]))
-            }
-            println()
-        }
-
+        printSinglePst(parameters, Eval.PST_INDEX + piece * 2 * 2 * 64)
         println()
 
         println("endgame king quad $pieceName table")
-        for (rank in 7 downTo 0) {
-            for (file in 0..7) {
-                print("%6d".format(parameters[Eval.PST_INDEX + Square(rank, file).value * 2 * 2 * 6 + 6 + piece]))
-            }
-            println()
-        }
-
+        printSinglePst(parameters, Eval.PST_INDEX + piece * 2 * 2 * 64 + 64)
         println()
 
         println("midgame non king quad $pieceName table")
-        for (rank in 7 downTo 0) {
-            for (file in 0..7) {
-                print("%6d".format(parameters[Eval.PST_INDEX + Square(rank, file).value * 2 * 2 * 6 + 12 + piece]))
-            }
-            println()
-        }
-
+        printSinglePst(parameters, Eval.PST_INDEX + piece * 2 * 2 * 64 + 2 * 64)
         println()
 
         println("endgame non king quad $pieceName table")
-        for (rank in 7 downTo 0) {
-            for (file in 0..7) {
-                print("%6d".format(parameters[Eval.PST_INDEX + Square(rank, file).value * 2 * 2 * 6 + 12 + 6 + piece]))
-            }
-            println()
-        }
-
+        printSinglePst(parameters, Eval.PST_INDEX + piece * 2 * 2 * 64 + 2 * 64 + 64)
         println()
     }
+}
+
+fun printSinglePst(parameters: IntArray, index: Int) {
+    for (rank in 7 downTo 0) {
+        for (file in 0..7) {
+            print("%6d".format(parameters[index + Square(rank, file).value]))
+        }
+        println()
+    }
+}
+
+fun printParameters(parameters: IntArray, startIndex: Int, amount: Int) {
+    for (i in startIndex..<startIndex+amount) {
+        print("${parameters[i]}, ")
+    }
+    println()
 }

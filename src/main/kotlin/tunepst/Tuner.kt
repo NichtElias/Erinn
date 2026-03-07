@@ -86,23 +86,23 @@ object Tuner {
 
         for (p in PieceType.PAWN.idx()..PieceType.KING.idx()) {
             Bitboards.forAllSquares(position.piecesBB[p] and whiteKingQuadPieces) { square ->
-                derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + p] = mgPhase.toFloat() / 24
-                derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 6 + p] = egPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + p * 2 * 2 * 64 + square.value] = mgPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + p * 2 * 2 * 64 + 64 + square.value] = egPhase.toFloat() / 24
             }
 
             Bitboards.forAllSquares(position.piecesBB[p] and whiteNonKingQuadPieces) { square ->
-                derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 12 + p] = mgPhase.toFloat() / 24
-                derivatives[Eval.PST_INDEX + square.value * 2 * 2 * 6 + 12 + 6 + p] = egPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + p * 2 * 2 * 64 + 2 * 64 + square.value] = mgPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + p * 2 * 2 * 64 + 2 * 64 + 64 + square.value] = egPhase.toFloat() / 24
             }
 
             Bitboards.forAllSquares(position.piecesBB[p] and blackKingQuadPieces) { square ->
-                derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + p] = -mgPhase.toFloat() / 24
-                derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 6 + p] = -egPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + p * 2 * 2 * 64 + square.mirror.value] = -mgPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + p * 2 * 2 * 64 + 64 + square.mirror.value] = -egPhase.toFloat() / 24
             }
 
             Bitboards.forAllSquares(position.piecesBB[p] and blackNonKingQuadPieces) { square ->
-                derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 12 + p] = -mgPhase.toFloat() / 24
-                derivatives[Eval.PST_INDEX + square.mirror.value * 2 * 2 * 6 + 12 + 6 + p] = -egPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + p * 2 * 2 * 64 + 2 * 64 + square.mirror.value] = -mgPhase.toFloat() / 24
+                derivatives[Eval.PST_INDEX + p * 2 * 2 * 64 + 2 * 64 + 64 + square.mirror.value] = -egPhase.toFloat() / 24
             }
         }
 
