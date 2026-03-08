@@ -106,6 +106,10 @@ abstract class FastChessBenchmarkTask @Inject constructor(
     @get:Option(option = "seed", description = "The seed to use for opening randomization")
     abstract val rngSeed: Property<Int>
 
+    @get:Input
+    @get:Option(option = "tc", description = "Time controls for fastchess")
+    abstract val timeControls: Property<String>
+
     @get:InputFile
     abstract val builtJar: RegularFileProperty
 
@@ -122,6 +126,7 @@ abstract class FastChessBenchmarkTask @Inject constructor(
         baselineId.convention("base")
         roundCount.convention(100)
         rngSeed.convention(39872039)
+        timeControls.convention("5+0.2")
         dependsOn("shadowJar")
     }
 
@@ -146,7 +151,7 @@ abstract class FastChessBenchmarkTask @Inject constructor(
                 "fastchess",
                 "-engine", "name=$id", "args=-Xmx300M -jar ${testBenchPath.resolve(featureJarName)}",
                 "-engine", "name=$baseId", "args=-Xmx300M -jar ${testBenchPath.resolve(baseJarName)}",
-                "-each", "cmd=$javaPath", "tc=5+0.2", "-rounds", "${roundCount.get()}", "-concurrency", "5", "-maxmoves", "100",
+                "-each", "cmd=$javaPath", "tc=${timeControls.get()}", "-rounds", "${roundCount.get()}", "-concurrency", "5", "-maxmoves", "100",
                 "-openings", "file=./8moves_v3.pgn", "format=pgn", "order=random", "-srand", "${rngSeed.get()}",
                 "-autosaveinterval", "0", "-config", "outname=fastchess-config.json"
             )
