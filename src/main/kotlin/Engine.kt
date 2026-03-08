@@ -19,6 +19,8 @@ class Engine {
 
     var nodesSearched: Long = 0
 
+    val killers: Array<Array<Move>> = Array(MAX_GAME_PLY) { Array(2) { Move.NULL_MOVE } }
+
     fun evaluate(): Score {
         return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
@@ -89,7 +91,7 @@ class Engine {
 
         var alphaRaised = false
 
-        position.forMoves(hashMove = ttEntry?.bestMove) { move ->
+        position.forMoves(hashMove = ttEntry?.bestMove, killerMoves = killers[plyFromRoot]) { move ->
             val stateInfo = position.doMove(move)
             val result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha)
             val score = -result.score
@@ -106,6 +108,10 @@ class Engine {
                 }
             }
             if (score >= beta) {
+                if (move.capture == Piece.NONE && move.promotion == PieceType.NONE) {
+                    putKiller(move, plyFromRoot)
+                }
+
                 tt.store(position.zobristHash, remainingDepth, position.turn,
                     plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move)
                 return Result(bestMove, bestScore)
@@ -155,6 +161,13 @@ class Engine {
         }
 
         return deepestResult
+    }
+
+    fun putKiller(move: Move, plyFromRoot: Int) {
+        if (move != killers[plyFromRoot][0]) {
+            killers[plyFromRoot][1] = killers[plyFromRoot][0]
+        }
+        killers[plyFromRoot][0] = move
     }
 
     fun perft(depth: Int): Long {

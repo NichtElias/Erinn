@@ -24,7 +24,7 @@ data class Move(
     }
 
     companion object {
-        val NULL_MOVE = Move(Square(0), Square(0), Piece.NONE)
+        val NULL_MOVE = Move(Square(-1), Square(-1), Piece.NONE)
 
         fun fromUci(uciMove: String, position: Board): Move {
             val src = Square.parseUci(uciMove.substring(0..1))

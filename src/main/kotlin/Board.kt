@@ -275,13 +275,10 @@ class Board {
         return inCheck
     }
 
-    inline fun forMoves(capturesOnly: Boolean = false, hashMove: Move? = null, moveConsumer: (Move) -> Unit) {
-        var hashMove = hashMove
-
+    inline fun forMoves(capturesOnly: Boolean = false, hashMove: Move? = null, killerMoves: Array<Move>? = null, moveConsumer: (Move) -> Unit) {
         if (hashMove != null && isLegalMove(hashMove))
             moveConsumer(hashMove)
-        else
-            hashMove = null
+
 
         // generate pawn non-capture promotions
         if (!capturesOnly) {
@@ -292,7 +289,7 @@ class Board {
                     val singlePushMove = Move(src, front, Piece.NONE)
                     if (!isInCheckAfter(singlePushMove))
                         singlePushMove.forPromotionVariants { m ->
-                            if (m != hashMove) moveConsumer(m)
+                            moveConsumer(m)
                         }
                 }
             }
@@ -315,7 +312,7 @@ class Board {
                             piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]
                     ) { src ->
                         val epMove = Move(src, epSquare, Piece(turn.opponent(), PieceType.PAWN), isEp = true)
-                        if (!isInCheckAfter(epMove) && epMove != hashMove)
+                        if (!isInCheckAfter(epMove))
                             moveConsumer(epMove)
                     }
                 }
@@ -330,13 +327,21 @@ class Board {
                         if (!isInCheckAfter(captureMove)) {
                             if (aggressorType == PieceType.PAWN.idx() && victimSquare.rank == turn.opponent().backRank()) {
                                 captureMove.forPromotionVariants { m ->
-                                    if (m != hashMove) moveConsumer(m)
+                                    moveConsumer(m)
                                 }
                             } else {
-                                if (captureMove != hashMove) moveConsumer(captureMove)
+                                moveConsumer(captureMove)
                             }
                         }
                     }
+                }
+            }
+        }
+
+        if (killerMoves != null) {
+            for (killer in killerMoves) {
+                if (killer != Move.NULL_MOVE && isLegalMove(killer)) {
+                    moveConsumer(killer)
                 }
             }
         }
@@ -349,7 +354,7 @@ class Board {
                     && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[i], turn.opponent())
                 ) { // cannot be illegal because it already checks if king will move into check
                     val castlingMove = Move(Square.KING_STARTS[i / 2], Square.CASTLING_TARGET_SQUARES[i], Piece.NONE, castle = i)
-                    if (castlingMove != hashMove) moveConsumer(castlingMove)
+                    moveConsumer(castlingMove)
                 }
             }
         }
@@ -363,7 +368,7 @@ class Board {
                         attacksOf(src, piece.type(), piece.color()) and occupiedBB.inv()
                     ) { target ->
                         val move = Move(src, target, Piece.NONE)
-                        if (!isInCheckAfter(move) && move != hashMove)
+                        if (!isInCheckAfter(move))
                             moveConsumer(move)
                     }
                 }
@@ -382,12 +387,12 @@ class Board {
                     val doublePushSquare = Square(src.value + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
                     if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
                         val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
-                        if (!isInCheckAfter(doublePushMove) && doublePushMove != hashMove)
+                        if (!isInCheckAfter(doublePushMove))
                             moveConsumer(doublePushMove)
                     }
 
                     // generate single push
-                    if (!isInCheckAfter(singlePushMove) && singlePushMove != hashMove)
+                    if (!isInCheckAfter(singlePushMove))
                         moveConsumer(singlePushMove)
 
                 }
@@ -396,6 +401,8 @@ class Board {
     }
 
     fun isPseudoLegalMove(move: Move): Boolean {
+        if (move == Move.NULL_MOVE) return false
+
         val piece = pieces[move.src.value]
         if (piece == Piece.NONE) return false // can't move null piece
         if (piece.color() != turn) return false // can't move opponent's piece
@@ -404,6 +411,15 @@ class Board {
             if (move.dst == epSquare && epSquare.bb() and MoveGen.INDEXED_PAWN_ATTACKS[turn.idx()][move.src.value] != 0L) {
                 return true // this is a legal ep move
             }
+        }
+
+        if (move.castle != -1) {
+            return (castlingRights and Square.CASTLING_ROOK_SQUARES[move.castle].bb() != 0L
+                    && Bitboards.CASTLING_EMPTY[move.castle] and occupiedBB == 0L
+                    && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[move.castle], turn.opponent())
+                    && move.src == Square.KING_STARTS[move.castle / 2]
+                    && move.dst == Square.CASTLING_TARGET_SQUARES[move.castle]
+                    && move.capture == Piece.NONE)
         }
 
         if (pieces[move.dst.value] != move.capture) return false // check if the right piece is captured
@@ -420,17 +436,7 @@ class Board {
             val validTargetSquares = (attacksOf(move.src, piece.type(), piece.color())
                     and colorsBB[turn.idx()].inv())
 
-            if (validTargetSquares and move.dst.bb() != 0L) return true
-
-            // now only castling is possible
-            if (move.castle == -1) return false
-
-            return (castlingRights and Square.CASTLING_ROOK_SQUARES[move.castle].bb() != 0L
-                && Bitboards.CASTLING_EMPTY[move.castle] and occupiedBB == 0L
-                && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[move.castle], turn.opponent())
-                && move.src == Square.KING_STARTS[move.castle / 2]
-                && move.dst == Square.CASTLING_TARGET_SQUARES[move.castle]
-                && move.capture == Piece.NONE)
+            return validTargetSquares and move.dst.bb() != 0L
         }
     }
 
