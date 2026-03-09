@@ -32,7 +32,7 @@ class Engine {
         if (bestScore >= beta) return bestScore
         if (bestScore > alpha) alpha = bestScore
 
-        position.forMoves(capturesOnly = true) { move ->
+        position.forMoves(capturesOnly = true, inCheck = position.isColorInCheck(position.turn)) { move ->
             val stateInfo = position.doMove(move)
             val score = -qSearch(-beta, -alpha)
             position.undoMove(move, stateInfo)
@@ -91,7 +91,7 @@ class Engine {
 
         var alphaRaised = false
 
-        position.forMoves(hashMove = ttEntry?.bestMove, killerMoves = killers[plyFromRoot]) { move ->
+        position.forMoves(inCheck = inCheck, hashMove = ttEntry?.bestMove, killerMoves = killers[plyFromRoot]) { move ->
             val stateInfo = position.doMove(move)
             val result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha)
             val score = -result.score
@@ -174,7 +174,7 @@ class Engine {
         if (depth == 0) return 1L
 
         var nodes = 0L
-        position.forMoves { move ->
+        position.forMoves(inCheck = position.isColorInCheck(position.turn)) { move ->
             val stateInfo = position.doMove(move)
             nodes += perft(depth - 1)
             position.undoMove(move, stateInfo)
@@ -185,7 +185,7 @@ class Engine {
     fun perftDivide(depth: Int): Map<Move, Long> {
         val results = HashMap<Move, Long>()
 
-        position.forMoves { move ->
+        position.forMoves(inCheck = position.isColorInCheck(position.turn)) { move ->
             if (depth == 1) {
                 results[move] = 1
             } else {
