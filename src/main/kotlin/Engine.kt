@@ -170,6 +170,13 @@ class Engine {
         killers[plyFromRoot][0] = move
     }
 
+    fun resetKillers() {
+        for (ply in 0..<killers.size) {
+            killers[ply][0] = Move.NULL_MOVE
+            killers[ply][1] = Move.NULL_MOVE
+        }
+    }
+
     fun perft(depth: Int): Long {
         if (depth == 0) return 1L
 

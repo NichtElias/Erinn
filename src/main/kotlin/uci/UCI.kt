@@ -53,6 +53,8 @@ suspend fun run() {
 
         } else if (cmd[0] == "position") {
 
+            engine.resetKillers()
+
             var i = 1
             if (cmd[i] == "startpos") {
                 engine.position = Board.startPos()
