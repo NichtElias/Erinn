@@ -1,6 +1,7 @@
 package party.elias
 
 import kotlin.math.min
+import kotlin.math.sign
 
 class Board {
     val piecesBB: BitboardArray = BitboardArray(6)
@@ -275,7 +276,7 @@ class Board {
         return inCheck
     }
 
-    inline fun forMoves(capturesOnly: Boolean = false, hashMove: Move? = null, killerMoves: Array<Move>? = null, moveConsumer: (Move) -> Unit) {
+    inline fun forMoves(capturesOnly: Boolean = false, hashMove: Move? = null, killerMoves: Array<Move>? = null, historyCuts: FloatArray? = null, historyTotal: FloatArray? = null, moveConsumer: (Move) -> Unit) {
         if (hashMove != null && isLegalMove(hashMove))
             moveConsumer(hashMove)
 
@@ -359,8 +360,10 @@ class Board {
             }
         }
 
-        // generate missing non-captures
         if (!capturesOnly) {
+            val historyScoredMoves: ArrayList<Pair<Move, Float>> = ArrayList()
+
+            // generate missing non-captures
             Bitboards.forAllSquares(colorsBB[turn.idx()]) { src ->
                 val piece = pieces[src.value]
                 if (piece.type() != PieceType.PAWN) {
@@ -368,15 +371,23 @@ class Board {
                         attacksOf(src, piece.type(), piece.color()) and occupiedBB.inv()
                     ) { target ->
                         val move = Move(src, target, Piece.NONE)
-                        if (!isInCheckAfter(move))
-                            moveConsumer(move)
+                        if (!isInCheckAfter(move)) {
+                            if (historyCuts != null && historyTotal != null) {
+                                val idx = turn.idx() * 64 * 64 + move.src.value * 64 + move.dst.value
+                                historyScoredMoves.add(
+                                    Pair(move,
+                                        if (historyTotal[idx] == 0F) 0F else historyCuts[idx] / historyTotal[idx]
+                                    )
+                                )
+                            } else {
+                                moveConsumer(move)
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        // generate pawn non-capture non-promotion moves
-        if (!capturesOnly) {
+            // generate pawn non-capture non-promotion moves
             Bitboards.forAllSquares(piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.idx()]
                     and Bitboards.PAWN_NON_PROMOTION_AREAS[turn.idx()]) { src ->
                 val front = Square(src.value + MoveGen.PAWN_DIRECTIONS[turn.idx()])
@@ -387,15 +398,46 @@ class Board {
                     val doublePushSquare = Square(src.value + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
                     if (src.rank == turn.pawnStartingRank() && pieces[doublePushSquare.value] == Piece.NONE) {
                         val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
-                        if (!isInCheckAfter(doublePushMove))
-                            moveConsumer(doublePushMove)
+                        if (!isInCheckAfter(doublePushMove)) {
+                            if (historyCuts != null && historyTotal != null) {
+                                val idx = turn.idx() * 64 * 64 + doublePushMove.src.value * 64 + doublePushMove.dst.value
+                                historyScoredMoves.add(
+                                    Pair(
+                                        doublePushMove,
+                                        if (historyTotal[idx] == 0F) 0F else historyCuts[idx] / historyTotal[idx]
+                                    )
+                                )
+                            } else {
+                                moveConsumer(doublePushMove)
+                            }
+                        }
                     }
 
                     // generate single push
-                    if (!isInCheckAfter(singlePushMove))
-                        moveConsumer(singlePushMove)
-
+                    if (!isInCheckAfter(singlePushMove)) {
+                        if (historyCuts != null && historyTotal != null) {
+                            val idx = turn.idx() * 64 * 64 + singlePushMove.src.value * 64 + singlePushMove.dst.value
+                            historyScoredMoves.add(
+                                Pair(
+                                    singlePushMove,
+                                    if (historyTotal[idx] == 0F) 0F else historyCuts[idx] / historyTotal[idx]
+                                )
+                            )
+                        } else {
+                            moveConsumer(singlePushMove)
+                        }
+                    }
                 }
+            }
+
+            if (historyCuts != null && historyTotal != null) {
+                historyScoredMoves.sortWith(Comparator { moveA, moveB ->
+                    return@Comparator sign(moveB.second - moveA.second).toInt()
+                })
+            }
+
+            for (move in historyScoredMoves) {
+                moveConsumer(move.first)
             }
         }
     }

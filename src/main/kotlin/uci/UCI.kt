@@ -54,6 +54,7 @@ suspend fun run() {
         } else if (cmd[0] == "position") {
 
             engine.resetKillers()
+            engine.ageHistory()
 
             var i = 1
             if (cmd[i] == "startpos") {

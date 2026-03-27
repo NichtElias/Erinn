@@ -21,6 +21,9 @@ class Engine {
 
     val killers: Array<Array<Move>> = Array(MAX_GAME_PLY) { Array(2) { Move.NULL_MOVE } }
 
+    val historyCuts: FloatArray = FloatArray(2 * 64 * 64) // "normal" history heuristic scores
+    val historyTotal: FloatArray = FloatArray(2 * 64 * 64) // used for relative history heuristic
+
     fun evaluate(): Score {
         return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
@@ -91,7 +94,7 @@ class Engine {
 
         var alphaRaised = false
 
-        position.forMoves(hashMove = ttEntry?.bestMove, killerMoves = killers[plyFromRoot]) { move ->
+        position.forMoves(hashMove = ttEntry?.bestMove, killerMoves = killers[plyFromRoot], historyCuts = historyCuts, historyTotal = historyTotal) { move ->
             val stateInfo = position.doMove(move)
             val result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha)
             val score = -result.score
@@ -107,9 +110,14 @@ class Engine {
                     alphaRaised = true
                 }
             }
+
+            val historyIndex = position.turn.idx() * 64 * 64 + move.src.value * 64 + move.dst.value
+            historyTotal[historyIndex] += remainingDepth + 1
             if (score >= beta) {
                 if (move.capture == Piece.NONE && move.promotion == PieceType.NONE) {
                     putKiller(move, plyFromRoot)
+
+                    historyCuts[historyIndex] += remainingDepth + 1
                 }
 
                 tt.store(position.zobristHash, remainingDepth, position.turn,
@@ -174,6 +182,20 @@ class Engine {
         for (ply in 0..<killers.size) {
             killers[ply][0] = Move.NULL_MOVE
             killers[ply][1] = Move.NULL_MOVE
+        }
+    }
+
+    fun ageHistory() {
+        for (i in 0..<historyCuts.size) {
+            historyCuts[i] /= 4
+            historyTotal[i] /= 4
+        }
+    }
+
+    fun resetHistory() {
+        for (i in 0..<historyCuts.size) {
+            historyCuts[i] = 0F
+            historyTotal[i] = 0F
         }
     }
 
