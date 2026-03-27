@@ -153,7 +153,7 @@ class Engine {
             deepestResult = result
 
             val elapsed = TimeSource.Monotonic.markNow() - searchStartTime
-            sendUciInfo(d, elapsed, nodesSearched, result.score)
+            sendUciInfo(d, elapsed, nodesSearched, result.score, deepestResult.move)
 
             if (elapsed > limits.softTime) {
                 return deepestResult
