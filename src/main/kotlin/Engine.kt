@@ -35,7 +35,8 @@ class Engine {
     val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
 
     fun evaluate(): Score {
-        return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
+        return NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack, position.turn)
+        //return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
 
     fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score): Score {

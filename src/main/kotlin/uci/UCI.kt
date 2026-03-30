@@ -10,6 +10,7 @@ import party.elias.Color
 import party.elias.Engine
 import party.elias.Limits
 import party.elias.Move
+import party.elias.NNUE
 import party.elias.Score
 import party.elias.TranspositionTable
 import kotlin.collections.isEmpty
@@ -28,6 +29,8 @@ suspend fun run() {
 
     val engine = Engine()
 
+    var nnueInitialized = false
+
     var running = true
 
     while (running) {
@@ -45,6 +48,10 @@ suspend fun run() {
 
         } else if (cmd[0] == "isready") {
 
+            if (!nnueInitialized) {
+                NNUE.load()
+                nnueInitialized = true
+            }
             println("readyok")
 
         } else if (cmd[0] == "ucinewgame") {
@@ -163,6 +170,9 @@ suspend fun run() {
                 }
             }
 
+        } else if (cmd[0] == "eval") {
+            // println(scoreString(engine.qSearch(-Engine.MATE_SCORE, Engine.MATE_SCORE)))
+            println(scoreString(engine.evaluate()))
         }
     }
 
@@ -183,9 +193,8 @@ fun uciPositionCmd(fen: String, vararg moves: Move): String {
     }
 }
 
-fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, pv: ArrayList<Move>) {
-    val nps = nodes * 1000 / max(time.toInt(DurationUnit.MILLISECONDS), 1)
-    val scoreStr = if (abs(score) >= Engine.MIN_MATE_SCORE) {
+fun scoreString(score: Score): String {
+    return if (abs(score) >= Engine.MIN_MATE_SCORE) {
         if (score >= 0) {
             "mate ${(Engine.MATE_SCORE - score + 1) / 2}"
         } else {
@@ -194,6 +203,11 @@ fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, pv: Array
     } else {
         "cp $score"
     }
+}
+
+fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, pv: ArrayList<Move>) {
+    val nps = nodes * 1000 / max(time.toInt(DurationUnit.MILLISECONDS), 1)
+    val scoreStr = scoreString(score)
     if (pv.isEmpty()) {
         println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes score $scoreStr nps $nps")
     } else {
