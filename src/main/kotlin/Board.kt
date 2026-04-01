@@ -537,15 +537,17 @@ class Board {
                 + piece.type().idx() * 2
                 + if (piece.color() == Color.BLACK) 0 else 1)
 
+        val whiteFeatureOffset = whiteFeatureIdx * NNUE.ACC_HALF_SIZE
+        val blackFeatureOffset = blackFeatureIdx * NNUE.ACC_HALF_SIZE
         if (remove) {
             for (i in 0..<NNUE.ACC_HALF_SIZE) {
-                nnueAccWhite[i] -= NNUE.ftWeights[i * NNUE.FEATURE_NUM + whiteFeatureIdx]
-                nnueAccBlack[i] -= NNUE.ftWeights[i * NNUE.FEATURE_NUM + blackFeatureIdx]
+                nnueAccWhite[i] -= NNUE.ftWeights[whiteFeatureOffset + i]
+                nnueAccBlack[i] -= NNUE.ftWeights[blackFeatureOffset + i]
             }
         } else {
             for (i in 0..<NNUE.ACC_HALF_SIZE) {
-                nnueAccWhite[i] += NNUE.ftWeights[i * NNUE.FEATURE_NUM + whiteFeatureIdx]
-                nnueAccBlack[i] += NNUE.ftWeights[i * NNUE.FEATURE_NUM + blackFeatureIdx]
+                nnueAccWhite[i] += NNUE.ftWeights[whiteFeatureOffset + i]
+                nnueAccBlack[i] += NNUE.ftWeights[blackFeatureOffset + i]
             }
         }
     }

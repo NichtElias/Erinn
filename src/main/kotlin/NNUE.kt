@@ -9,11 +9,11 @@ import kotlin.math.roundToInt
 object NNUE {
 
     const val FEATURE_NUM = 64 * 64 * 5 * 2
-    const val ACC_HALF_SIZE = 128
+    const val ACC_HALF_SIZE = 32
     const val L1_SIZE = 16
 
     val ftBiases: FloatArray = FloatArray(ACC_HALF_SIZE)
-    val ftWeights: FloatArray = FloatArray(FEATURE_NUM * ACC_HALF_SIZE)
+    val ftWeights: FloatArray = FloatArray(FEATURE_NUM * ACC_HALF_SIZE) // this one is laid out differently, so that the weights for a single feature are contiguous in memory
     val l1Biases: FloatArray = FloatArray(L1_SIZE)
     val l1Weights: FloatArray = FloatArray(ACC_HALF_SIZE * 2 * L1_SIZE)
     val l2Biases: FloatArray = FloatArray(1)
