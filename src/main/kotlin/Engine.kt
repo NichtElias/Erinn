@@ -51,7 +51,7 @@ class Engine {
         return bestScore
     }
 
-    fun search(plyFromRoot: Int, remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE): Result {
+    fun search(plyFromRoot: Int, remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE, isPV: Boolean = true): Result {
         var remainingDepth = remainingDepth
 
         if (nodesSearched++ and 4095 == 0L) {
@@ -71,10 +71,10 @@ class Engine {
                     TranspositionTable.BoundType.EXACT ->
                         return Result(ttEntry.bestMove!!, adjustedScore)
 
-                    TranspositionTable.BoundType.LOWER -> if (adjustedScore >= beta)
+                    TranspositionTable.BoundType.LOWER -> if (adjustedScore >= beta && !isPV)
                         return Result(Move.NULL_MOVE, adjustedScore)
 
-                    TranspositionTable.BoundType.UPPER -> if (adjustedScore < alpha)
+                    TranspositionTable.BoundType.UPPER -> if (adjustedScore < alpha && !isPV)
                         return Result(Move.NULL_MOVE, adjustedScore)
                 }
             }
@@ -82,7 +82,7 @@ class Engine {
 
         val inCheck = position.isColorInCheck(position.turn)
 
-        if (inCheck && remainingDepth == 0) remainingDepth++ // check extension
+        if (inCheck && remainingDepth == 0 && isPV) remainingDepth++ // check extension
 
         if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(alpha, beta))
 
@@ -96,8 +96,21 @@ class Engine {
 
         position.forMoves(hashMove = ttEntry?.bestMove, killerMoves = killers[plyFromRoot], historyCuts = historyCuts, historyTotal = historyTotal) { move ->
             val stateInfo = position.doMove(move)
-            val result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha)
-            val score = -result.score
+
+            var result: Result
+            var score: Score
+
+            if (!alphaRaised) {
+                result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha, isPV)
+                score = -result.score
+            } else {
+                result = search(plyFromRoot + 1, remainingDepth - 1, limits, -alpha - 1, -alpha, false)
+                score = -result.score
+                if (score > alpha && !result.aborted) {
+                    result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha, true)
+                    score = -result.score
+                }
+            }
             position.undoMove(move, stateInfo)
 
             if (result.aborted) return Result.ABORT
