@@ -28,6 +28,16 @@ class Engine {
         return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
 
+    fun getContempt(alpha: Score, beta: Score): Score {
+        val eval = qSearch(alpha, beta)
+
+        return if (eval >= 0) {
+            -25
+        } else {
+            0
+        }
+    }
+
     fun qSearch(alpha: Score, beta: Score): Score {
         var alpha = alpha
         var bestScore = evaluate()
@@ -60,7 +70,7 @@ class Engine {
             }
         }
 
-        if (position.isDrawByRepetition()) return Result.draw()
+        if (position.isDrawByRepetition()) return Result.draw(getContempt(alpha, beta))
 
         // probe transposition table
         val ttEntry = tt.get(position.zobristHash)
@@ -90,6 +100,7 @@ class Engine {
 
         var bestScore: Score = -MATE_SCORE
         var bestMove: Move = Move.NULL_MOVE
+        var bestScoreIsDraw: Boolean = false
         var moveCount = 0
 
         var alphaRaised = false
@@ -118,6 +129,7 @@ class Engine {
             if (score > bestScore) {
                 bestScore = score
                 bestMove = move
+                bestScoreIsDraw = result.isDraw
                 if (score > alpha) {
                     alpha = score
                     alphaRaised = true
@@ -133,9 +145,13 @@ class Engine {
                     historyCuts[historyIndex] += remainingDepth + 1
                 }
 
-                tt.store(position.zobristHash, remainingDepth, position.turn,
-                    plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move)
-                return Result(bestMove, bestScore)
+                if (!bestScoreIsDraw) {
+                    tt.store(
+                        position.zobristHash, remainingDepth, position.turn,
+                        plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move
+                    )
+                }
+                return Result(bestMove, bestScore, isDraw = bestScoreIsDraw)
             }
 
             moveCount++
@@ -145,18 +161,24 @@ class Engine {
             if (inCheck)
                 return Result.checkmated(plyFromRoot) // we got checkmated
 
-            return Result.draw() // stalemate
+            return Result.draw(getContempt(alpha, beta)) // stalemate
         }
 
-        if (alphaRaised) { // PV node
-            tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BoundType.EXACT, bestMove)
-        } else { // all node
-            tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BoundType.UPPER)
+        if (!bestScoreIsDraw) {
+            if (alphaRaised) { // PV node
+                tt.store(
+                    position.zobristHash, remainingDepth, position.turn,
+                    plyFromRoot, bestScore, TranspositionTable.BoundType.EXACT, bestMove
+                )
+            } else { // all node
+                tt.store(
+                    position.zobristHash, remainingDepth, position.turn,
+                    plyFromRoot, bestScore, TranspositionTable.BoundType.UPPER
+                )
+            }
         }
 
-        return Result(bestMove, bestScore)
+        return Result(bestMove, bestScore, isDraw = bestScoreIsDraw)
     }
 
     fun iterDeep(limits: Limits): Result {
@@ -247,7 +269,7 @@ class Engine {
         const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
     }
 
-    data class Result(val move: Move, val score: Score, val aborted: Boolean = false) {
+    data class Result(val move: Move, val score: Score, val aborted: Boolean = false, val isDraw: Boolean = false) {
         companion object {
             val ABORT = Result(Move.NULL_MOVE, -MATE_SCORE,  aborted = true)
 
@@ -255,8 +277,8 @@ class Engine {
                 return Result(Move.NULL_MOVE, -MATE_SCORE + depth)
             }
 
-            fun draw(): Result {
-                return Result(Move.NULL_MOVE, 0)
+            fun draw(contempt: Score): Result {
+                return Result(Move.NULL_MOVE, contempt, isDraw = true)
             }
         }
     }
