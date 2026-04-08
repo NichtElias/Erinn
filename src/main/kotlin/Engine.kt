@@ -97,20 +97,40 @@ class Engine {
         position.forMoves(hashMove = ttEntry?.bestMove, killerMoves = killers[plyFromRoot], historyCuts = historyCuts, historyTotal = historyTotal) { move ->
             val stateInfo = position.doMove(move)
 
+            var reduction = 0
+
+            if (!isPV && remainingDepth >= 3 && moveCount > 3
+                && !inCheck && !position.isColorInCheck(position.turn) // we weren't in check and this move isn't putting the opponent in check
+                && !isKiller(move, plyFromRoot)
+                && move.capture == Piece.NONE
+                && move.promotion == PieceType.NONE
+            ) {
+                reduction = 1 + ((remainingDepth - 3) / 2)
+            }
+
             var result: Result
             var score: Score
 
-            if (!alphaRaised) {
-                result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha, isPV)
-                score = -result.score
-            } else {
-                result = search(plyFromRoot + 1, remainingDepth - 1, limits, -alpha - 1, -alpha, false)
-                score = -result.score
-                if (score > alpha && !result.aborted) {
-                    result = search(plyFromRoot + 1, remainingDepth - 1, limits, -beta, -alpha, true)
+            while (true) {
+                if (!alphaRaised) {
+                    result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, isPV)
                     score = -result.score
+                } else {
+                    result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -alpha - 1, -alpha, false)
+                    score = -result.score
+                    if (score > alpha && !result.aborted) {
+                        result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, true)
+                        score = -result.score
+                    }
+                }
+
+                if (reduction > 0 && score > alpha) {
+                    reduction = 0
+                } else {
+                    break
                 }
             }
+
             position.undoMove(move, stateInfo)
 
             if (result.aborted) return Result.ABORT
@@ -189,6 +209,10 @@ class Engine {
             killers[plyFromRoot][1] = killers[plyFromRoot][0]
         }
         killers[plyFromRoot][0] = move
+    }
+
+    fun isKiller(move: Move, plyFromRoot: Int): Boolean {
+        return killers[plyFromRoot][0] == move || killers[plyFromRoot][1] == move
     }
 
     fun resetKillers() {
