@@ -53,6 +53,8 @@ tasks.register<JavaExec>("run") {
 
     mainClass.set("party.elias.MainKt")
 
+    enableAssertions = true
+
     standardInput = System.`in`
     standardOutput = System.out
     errorOutput = System.err

@@ -88,3 +88,13 @@ value class Piece(val value: Int) { // ...cttt, t = type, c = color
         }
     }
 }
+
+@JvmInline
+value class PieceArray(val array: IntArray) {
+    constructor() : this(IntArray(64) { Piece.NONE.value })
+
+    operator fun get(index: Int): Piece = Piece(array[index])
+    operator fun set(index: Int, piece: Piece) {
+        array[index] = piece.value
+    }
+}

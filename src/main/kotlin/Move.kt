@@ -8,6 +8,11 @@ data class Move(
     val isEp: Boolean = false,
     val castle: Int = -1
 ) {
+    init {
+        assert(src.value in 0..63)
+        assert(dst.value in 0..63)
+    }
+
     fun toUci(): String {
         val srcUci = src.toUci()
         val dstUci = dst.toUci()
@@ -23,8 +28,12 @@ data class Move(
         }
     }
 
+    fun toCompact(): CompactMove {
+        return CompactMove.fromMove(this)
+    }
+
     companion object {
-        val NULL_MOVE = Move(Square(-1), Square(-1), Piece.NONE)
+        val NULL_MOVE = Move(Square(0), Square(0), Piece.NONE)
 
         fun fromUci(uciMove: String, position: Board): Move {
             val src = Square.parseUci(uciMove.substring(0..1))

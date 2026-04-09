@@ -69,7 +69,7 @@ class Engine {
                 val adjustedScore = ttEntry.getAdjustedScore(position.turn, plyFromRoot)
                 when (ttEntry.bound) {
                     TranspositionTable.BoundType.EXACT ->
-                        return Result(ttEntry.bestMove!!, adjustedScore)
+                        return Result(ttEntry.bestMove.toMove(), adjustedScore)
 
                     TranspositionTable.BoundType.LOWER -> if (adjustedScore >= beta && !isPV)
                         return Result(Move.NULL_MOVE, adjustedScore)
@@ -94,7 +94,7 @@ class Engine {
 
         var alphaRaised = false
 
-        position.forMoves(hashMove = ttEntry?.bestMove, killerMoves = killers[plyFromRoot], historyCuts = historyCuts, historyTotal = historyTotal) { move ->
+        position.forMoves(hashMove = ttEntry?.bestMove?.toMove(), killerMoves = killers[plyFromRoot], historyCuts = historyCuts, historyTotal = historyTotal) { move ->
             val stateInfo = position.doMove(move)
 
             var reduction = 0

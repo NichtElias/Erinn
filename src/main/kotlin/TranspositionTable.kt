@@ -7,7 +7,7 @@ class TranspositionTable {
     val entries: Array<Entry?> = Array(TT_SIZE) { null }
 
     fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move? = null) {
-        val entry = Entry(key, draft, adjustScore(score, perspective, plyFromRoot), boundType, bestMove)
+        val entry = Entry(key, draft, adjustScore(score, perspective, plyFromRoot), boundType, (bestMove ?: Move.NULL_MOVE).toCompact())
 
         entries[(key and TT_INDEX_MASK).toInt()] = entry
     }
@@ -26,7 +26,7 @@ class TranspositionTable {
     }
 
     companion object {
-        const val TT_SIZE: Int = 0x100000
+        const val TT_SIZE: Int = 0x200000
         const val TT_INDEX_MASK: Long = (TT_SIZE - 1).toLong()
 
         const val SEED = 84927659
@@ -94,7 +94,7 @@ class TranspositionTable {
         EXACT
     }
 
-    data class Entry(val key: Long, val draft: Int, private val score: Score, val bound: BoundType, val bestMove: Move?) {
+    data class Entry(val key: Long, val draft: Int, private val score: Score, val bound: BoundType, val bestMove: CompactMove) {
         fun getAdjustedScore(perspective: Color, plyFromRoot: Int): Score {
             return adjustScore(score, perspective, -plyFromRoot)
         }

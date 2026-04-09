@@ -12,7 +12,7 @@ class Board {
     var turn: Color = Color.WHITE
     var halfMoves: Int = 0
     var fullMoves: Int = 1
-    val pieces: Array<Piece> = Array(64) { _ -> Piece.NONE }
+    val pieces: PieceArray = PieceArray()
     var zobristHash: Long = 0
     val positionHistory: LongArray = LongArray(Engine.MAX_GAME_PLY) // stores hashes of all positions in the game history up to this one
     var posHistoryStart: Int = 0 // when loading from fen string, we can't know the previous positions, so anything before this index is invalid
@@ -513,7 +513,8 @@ class Board {
         for (ri in 7 downTo 0) {
             var empty = 0
 
-            for (piece in pieces.sliceArray(ri*8..ri*8+7)) {
+            for (pieceValue in pieces.array.sliceArray(ri*8..ri*8+7)) {
+                val piece = Piece(pieceValue)
                 if (piece == Piece.NONE) {
                     empty++
                 } else {
