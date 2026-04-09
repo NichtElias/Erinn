@@ -1,6 +1,8 @@
 import party.elias.Board
 import party.elias.Engine
 import party.elias.Move
+import party.elias.Score
+import party.elias.Square
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -71,5 +73,20 @@ class BoardTests {
                 assertEquals(moveWasGenerated, b.isLegalMove(sampleMove))
             }
         }
+    }
+
+    fun seeTestHelper(fen: String, uciMove: String, expectedScore: Score) {
+        val pos = Board.fromFen(fen)
+        assertEquals(expectedScore, pos.see(Move.fromUci(uciMove, pos)), "got wrong SEE value for fen $fen")
+    }
+
+    @Test
+    fun seeTest() {
+        seeTestHelper("1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - - 0 1", "e1e5", 100)
+        seeTestHelper("rnbqkbnr/ppp1pppp/8/3p4/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 0 1", "e4d5", 100)
+        seeTestHelper("2k5/2p5/p7/1p2N3/1b2ppP1/4nP2/PP2B1P1/n1K5 w - - 3 23", "e2b5", -200)
+        seeTestHelper("2k5/2p5/p7/1p2N3/1b2ppP1/1P2nP2/P3B1P1/n1K5 b - - 0 23", "a1b3", -200)
+        seeTestHelper("r2k1b1r/pp1bpBpp/2n2n2/8/1q1P4/1QN2N2/PP3PPP/R1B1K2R w KQ - 1 11", "b3b4", 0)
+        seeTestHelper("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - - 0 1", "d3e5", -200)
     }
 }

@@ -1,5 +1,7 @@
 package party.elias
 
+import java.util.TreeSet
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sign
 
@@ -192,6 +194,82 @@ class Board {
             }
         }
         return false
+    }
+
+    fun see(captureMove: Move): Score {
+
+        val SEE_MATERIAL_VALUES = intArrayOf(100, 300, 300, 500, 900, 20000)
+
+        val firstVictim = captureMove.capture
+        var attacker = pieces[captureMove.src.value]
+
+        val gain = IntArray(32)
+        gain[0] = SEE_MATERIAL_VALUES[firstVictim.type().idx()]
+
+        var d = 0
+        var side = turn.opponent()
+
+        val attackerSquares = TreeSet<Square>(Comparator { squareA, squareB ->
+            return@Comparator SEE_MATERIAL_VALUES[pieces[squareA.value].type().idx()] - SEE_MATERIAL_VALUES[pieces[squareB.value].type().idx()]
+        })
+
+        var attackersBB = ((attackersTargeting(captureMove.dst, Color.WHITE)
+                or attackersTargeting(captureMove.dst, Color.BLACK))
+                and captureMove.src.bb().inv())
+        Bitboards.forAllSquares(attackersBB) { attackerSquare ->
+            attackerSquares.add(attackerSquare)
+        }
+
+        var tempOcc = occupiedBB and captureMove.src.bb().inv()
+
+        while (true) {
+            d++
+
+            // add new attackers from x-ray attacks
+            var newAttackerBB = 0L
+            if (attacker.type() == PieceType.PAWN || attacker.type() == PieceType.BISHOP || attacker.type() == PieceType.QUEEN) {
+                newAttackerBB = newAttackerBB or (Magic.getBishopAttacks(captureMove.dst.value, tempOcc)
+                        and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()])
+                        and tempOcc and attackersBB.inv()
+                )
+            }
+            if (attacker.type() == PieceType.ROOK || attacker.type() == PieceType.QUEEN) {
+                newAttackerBB = newAttackerBB or (Magic.getRookAttacks(captureMove.dst.value, tempOcc)
+                        and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()])
+                        and tempOcc and attackersBB.inv()
+                )
+            }
+
+            if (newAttackerBB != 0L) {
+                assert(newAttackerBB.countOneBits() == 1) // can only be one new attacker per capture
+
+                attackersBB = attackersBB or newAttackerBB
+                attackerSquares.add(Square(newAttackerBB.countTrailingZeroBits()))
+            }
+
+            // get next attacker
+            val nextAttackerSquare = attackerSquares.find { attackerSquare -> (attackerSquare.bb() and colorsBB[side.idx()]) != 0L}
+            if (nextAttackerSquare == null) {
+                d--
+                break
+            }
+
+            gain[d] = SEE_MATERIAL_VALUES[attacker.type().idx()] - gain[d-1]
+
+            attacker = pieces[nextAttackerSquare.value]
+            attackerSquares.remove(nextAttackerSquare)
+            tempOcc = tempOcc and nextAttackerSquare.bb().inv()
+            attackersBB = attackersBB and tempOcc
+
+            side = side.opponent()
+        }
+
+        while (d > 0) {
+            gain[d-1] = -max(-gain[d-1], gain[d])
+            d--
+        }
+
+        return gain[0]
     }
 
     fun areSquaresAttackedBy(squares: Bitboard, color: Color): Boolean {
