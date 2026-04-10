@@ -13,6 +13,10 @@ value class CompactMove(val v: Int) {
         return Move(src, dst, capture, promotion, isEp, castle)
     }
 
+    fun isNull(): Boolean {
+        return src.value == 0 && dst.value == 0
+    }
+
     companion object {
         fun fromMove(move: Move): CompactMove {
             var v = 0
