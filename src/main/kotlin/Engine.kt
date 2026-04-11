@@ -194,7 +194,7 @@ class Engine {
             deepestResult = result
 
             val elapsed = TimeSource.Monotonic.markNow() - searchStartTime
-            sendUciInfo(d, elapsed, nodesSearched, result.score, this)
+            sendUciInfo(d, elapsed, nodesSearched, result.score, deepestResult.move)
 
             if (elapsed > limits.softTime) {
                 return deepestResult
@@ -234,23 +234,6 @@ class Engine {
             historyCuts[i] = 0F
             historyTotal[i] = 0F
         }
-    }
-
-    fun fetchPV(pv: ArrayList<Move>) {
-
-        val ttEntry = tt.get(position.zobristHash)
-
-        if (ttEntry != null && ttEntry.bound == TranspositionTable.BoundType.EXACT && !ttEntry.bestMove.isNull()) {
-            val move = ttEntry.bestMove.toMove()
-            pv.add(move)
-
-            val stateInfo = position.doMove(move)
-
-            fetchPV(pv)
-
-            position.undoMove(move, stateInfo)
-        }
-
     }
 
     fun perft(depth: Int): Long {
