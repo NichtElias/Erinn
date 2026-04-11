@@ -152,10 +152,15 @@ suspend fun run() {
 
         } else if (cmd[0] == "show") { // nonstandard
 
-            print(engine.position.toString())
+            if (cmd[1] == "fen") {
+                println(engine.position.toFen())
+            } else {
 
-            if (engine.position.isDrawByRepetition()) {
-                println("draw by threefold repetition")
+                print(engine.position.toString())
+
+                if (engine.position.isDrawByRepetition()) {
+                    println("draw by threefold repetition")
+                }
             }
 
         }
