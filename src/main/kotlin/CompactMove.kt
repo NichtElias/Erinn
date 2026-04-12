@@ -28,3 +28,13 @@ value class CompactMove(val v: Int) {
         }
     }
 }
+
+@JvmInline
+value class CompactMoveArray(val array: IntArray) {
+    constructor(size: Int) : this(IntArray(size) { 0 })
+
+    operator fun get(index: Int): CompactMove = CompactMove(array[index])
+    operator fun set(index: Int, compactMove: CompactMove) {
+        array[index] = compactMove.v
+    }
+}

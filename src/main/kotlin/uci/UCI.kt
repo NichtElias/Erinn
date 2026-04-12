@@ -183,7 +183,7 @@ fun uciPositionCmd(fen: String, vararg moves: Move): String {
     }
 }
 
-fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, currentBestMove: Move) {
+fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, pv: ArrayList<Move>) {
     val nps = nodes * 1000 / max(time.toInt(DurationUnit.MILLISECONDS), 1)
     val scoreStr = if (abs(score) >= Engine.MIN_MATE_SCORE) {
         if (score >= 0) {
@@ -194,9 +194,13 @@ fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, currentBe
     } else {
         "cp $score"
     }
-    if (currentBestMove == Move.NULL_MOVE) {
+    if (pv.isEmpty()) {
         println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes score $scoreStr nps $nps")
     } else {
-        println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes pv ${currentBestMove.toUci()} score $scoreStr nps $nps")
+        var pvStr = ""
+        for (move in pv) {
+            pvStr += " ${move.toUci()}"
+        }
+        println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes pv$pvStr score $scoreStr nps $nps")
     }
 }

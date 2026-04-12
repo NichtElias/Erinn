@@ -24,6 +24,9 @@ class Engine {
     val historyCuts: FloatArray = FloatArray(2 * 64 * 64) // "normal" history heuristic scores
     val historyTotal: FloatArray = FloatArray(2 * 64 * 64) // used for relative history heuristic
 
+    val pvTable: CompactMoveArray = CompactMoveArray(48 * 48)
+    val pvLength: IntArray = IntArray(48)
+
     fun evaluate(): Score {
         return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
@@ -52,6 +55,10 @@ class Engine {
     }
 
     fun search(plyFromRoot: Int, remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE, isPV: Boolean = true): Result {
+        if (plyFromRoot == 0) {
+            pvLength.fill(0)
+        }
+
         var remainingDepth = remainingDepth
 
         if (nodesSearched++ and 4095 == 0L) {
@@ -111,24 +118,13 @@ class Engine {
             var result: Result
             var score: Score
 
-            while (true) {
-                if (!alphaRaised) {
-                    result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, isPV)
-                    score = -result.score
-                } else {
-                    result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -alpha - 1, -alpha, false)
-                    score = -result.score
-                    if (score > alpha && !result.aborted) {
-                        result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, true)
-                        score = -result.score
-                    }
-                }
+            result = pvs(alphaRaised, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
+            score = -result.score
 
-                if (reduction > 0 && score > alpha) {
-                    reduction = 0
-                } else {
-                    break
-                }
+            if (reduction > 0 && score > alpha) {
+                reduction = 0
+                result = pvs(alphaRaised, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
+                score = -result.score
             }
 
             position.undoMove(move, stateInfo)
@@ -141,6 +137,13 @@ class Engine {
                 if (score > alpha) {
                     alpha = score
                     alphaRaised = true
+                    pvTable[plyFromRoot * 48 + 0] = move.toCompact()
+                    System.arraycopy(
+                        pvTable.array, (plyFromRoot + 1) * 48,
+                        pvTable.array, plyFromRoot * 48 + 1,
+                        pvLength[plyFromRoot + 1]
+                    )
+                    pvLength[plyFromRoot] = pvLength[plyFromRoot + 1] + 1
                 }
             }
 
@@ -179,6 +182,28 @@ class Engine {
         return Result(bestMove, bestScore)
     }
 
+    private fun pvs(
+        alphaRaised: Boolean,
+        plyFromRoot: Int,
+        remainingDepth: Int,
+        reduction: Int,
+        limits: Limits,
+        beta: Score,
+        alpha: Score,
+        isPV: Boolean,
+    ): Result {
+        var result: Result
+        if (!alphaRaised) {
+            result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, isPV)
+        } else {
+            result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -alpha - 1, -alpha, false)
+            if (-result.score > alpha && !result.aborted) {
+                result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, true)
+            }
+        }
+        return result
+    }
+
     fun iterDeep(limits: Limits): Result {
         var deepestResult = Result(Move.NULL_MOVE, -MATE_SCORE)
 
@@ -194,7 +219,7 @@ class Engine {
             deepestResult = result
 
             val elapsed = TimeSource.Monotonic.markNow() - searchStartTime
-            sendUciInfo(d, elapsed, nodesSearched, result.score, deepestResult.move)
+            sendUciInfo(d, elapsed, nodesSearched, result.score, getPv())
 
             if (elapsed > limits.softTime) {
                 return deepestResult
@@ -262,6 +287,16 @@ class Engine {
         }
 
         return results
+    }
+
+    fun getPv(): ArrayList<Move> {
+        val pv = ArrayList<Move>()
+
+        for (i in 0..<pvLength[0]) {
+            pv.add(0, pvTable[0 * 48 + i].toMove())
+        }
+
+        return pv
     }
 
     companion object {
