@@ -152,7 +152,7 @@ suspend fun run() {
 
         } else if (cmd[0] == "show") { // nonstandard
 
-            if (cmd[1] == "fen") {
+            if (cmd.size > 1 && cmd[1] == "fen") {
                 println(engine.position.toFen())
             } else {
 
