@@ -9,6 +9,12 @@ typealias Score = Int
 class Engine {
 
     var position: Board = Board.startPos()
+        set(newPos) {
+            field = newPos
+            moveGens = Array(MAX_SEARCH_PLY) { MoveGen(newPos, this) }
+        }
+
+    var moveGens: Array<MoveGen> = Array(MAX_SEARCH_PLY) { MoveGen(position, this) }
 
     val tt: TranspositionTable = TranspositionTable()
 
@@ -24,23 +30,28 @@ class Engine {
     val historyCuts: FloatArray = FloatArray(2 * 64 * 64) // "normal" history heuristic scores
     val historyTotal: FloatArray = FloatArray(2 * 64 * 64) // used for relative history heuristic
 
-    val pvTable: CompactMoveArray = CompactMoveArray(48 * 48)
-    val pvLength: IntArray = IntArray(48)
+    val pvTable: CompactMoveArray = CompactMoveArray(MAX_SEARCH_PLY * MAX_SEARCH_PLY)
+    val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
 
     fun evaluate(): Score {
         return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
 
-    fun qSearch(alpha: Score, beta: Score): Score {
+    fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score): Score {
         var alpha = alpha
         var bestScore = evaluate()
 
         if (bestScore >= beta) return bestScore
         if (bestScore > alpha) alpha = bestScore
 
-        position.forMoves(capturesOnly = true) { move ->
+        val moveGen = moveGens[plyFromRoot]
+        moveGen.begin(genQuiets = false)
+
+        while (true) {
+            val move = moveGen.nextMove() ?: break
+
             val stateInfo = position.doMove(move)
-            val score = -qSearch(-beta, -alpha)
+            val score = -qSearch(plyFromRoot + 1, -beta, -alpha)
             position.undoMove(move, stateInfo)
 
             if (score >= beta)
@@ -91,7 +102,7 @@ class Engine {
 
         if (inCheck && remainingDepth == 0 && isPV) remainingDepth++ // check extension
 
-        if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(alpha, beta))
+        if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(plyFromRoot, alpha, beta))
 
         var alpha = alpha
 
@@ -101,7 +112,12 @@ class Engine {
 
         var alphaRaised = false
 
-        position.forMoves(hashMove = ttEntry?.bestMove?.toMove(), killerMoves = killers[plyFromRoot], historyCuts = historyCuts, historyTotal = historyTotal) { move ->
+        val moveGen = moveGens[plyFromRoot]
+        moveGen.begin(hashMove = ttEntry?.bestMove?.toMove(), killerMoves = killers[plyFromRoot])
+
+        while (true) {
+            val move = moveGen.nextMove() ?: break
+
             val stateInfo = position.doMove(move)
 
             var reduction = 0
@@ -261,13 +277,18 @@ class Engine {
         }
     }
 
-    fun perft(depth: Int): Long {
+    fun perft(plyFromRoot: Int, depth: Int): Long {
         if (depth == 0) return 1L
 
         var nodes = 0L
-        position.forMoves { move ->
+        val moveGen = moveGens[plyFromRoot]
+        moveGen.begin()
+
+        while (true) {
+            val move = moveGen.nextMove() ?: break
+
             val stateInfo = position.doMove(move)
-            nodes += perft(depth - 1)
+            nodes += perft(plyFromRoot + 1, depth - 1)
             position.undoMove(move, stateInfo)
         }
         return nodes
@@ -276,12 +297,16 @@ class Engine {
     fun perftDivide(depth: Int): Map<Move, Long> {
         val results = HashMap<Move, Long>()
 
-        position.forMoves { move ->
+        val moveGen = moveGens[0]
+        moveGen.begin()
+
+        while (true) {
+            val move = moveGen.nextMove() ?: break
             if (depth == 1) {
                 results[move] = 1
             } else {
                 val stateInfo = position.doMove(move)
-                results[move] = perft(depth - 1)
+                results[move] = perft(1, depth - 1)
                 position.undoMove(move, stateInfo)
             }
         }
@@ -301,7 +326,7 @@ class Engine {
 
     companion object {
         const val MATE_SCORE: Score = 32000
-        const val MAX_SEARCH_PLY: Int = 128
+        const val MAX_SEARCH_PLY: Int = 64
         const val MIN_MATE_SCORE: Score = MATE_SCORE - MAX_SEARCH_PLY
         const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
     }
