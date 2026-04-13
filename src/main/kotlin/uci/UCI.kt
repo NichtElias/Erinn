@@ -194,8 +194,7 @@ fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, pv: Array
     } else {
         "cp $score"
     }
-    // TODO: fix pv reporting
-    if (pv.isEmpty() || true) {
+    if (pv.isEmpty()) {
         println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes score $scoreStr nps $nps")
     } else {
         var pvStr = ""

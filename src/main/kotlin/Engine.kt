@@ -134,6 +134,7 @@ class Engine {
             var result: Result
             var score: Score
 
+            pvLength[plyFromRoot + 1] = 0
             result = pvs(alphaRaised, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
             score = -result.score
 
@@ -153,13 +154,16 @@ class Engine {
                 if (score > alpha) {
                     alpha = score
                     alphaRaised = true
-                    pvTable[plyFromRoot * 48 + 0] = move.toCompact()
-                    System.arraycopy(
-                        pvTable.array, (plyFromRoot + 1) * 48,
-                        pvTable.array, plyFromRoot * 48 + 1,
-                        pvLength[plyFromRoot + 1]
-                    )
-                    pvLength[plyFromRoot] = pvLength[plyFromRoot + 1] + 1
+
+                    if (isPV) {
+                        pvTable[plyFromRoot * MAX_SEARCH_PLY + 0] = move.toCompact()
+                        System.arraycopy(
+                            pvTable.array, (plyFromRoot + 1) * MAX_SEARCH_PLY,
+                            pvTable.array, plyFromRoot * MAX_SEARCH_PLY + 1,
+                            pvLength[plyFromRoot + 1]
+                        )
+                        pvLength[plyFromRoot] = pvLength[plyFromRoot + 1] + 1
+                    }
                 }
             }
 
@@ -318,7 +322,7 @@ class Engine {
         val pv = ArrayList<Move>()
 
         for (i in 0..<pvLength[0]) {
-            pv.add(0, pvTable[0 * 48 + i].toMove())
+            pv.add(pvTable[0 * 48 + i].toMove())
         }
 
         return pv
