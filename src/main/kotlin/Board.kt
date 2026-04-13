@@ -19,6 +19,9 @@ class Board {
     val positionHistory: LongArray = LongArray(Engine.MAX_GAME_PLY) // stores hashes of all positions in the game history up to this one
     var posHistoryStart: Int = 0 // when loading from fen string, we can't know the previous positions, so anything before this index is invalid
 
+    // just a reusable array for SEE, doesn't get affected by doMove/undoMove
+    val seeGain: IntArray = IntArray(32)
+
     val occupiedBB: Bitboard get() = colorsBB[0] or colorsBB[1]
     val ply: Int get() = (fullMoves - 1) * 2 + if (turn == Color.BLACK) 1 else 0 // for indexing positionHistory and the like
 
@@ -203,8 +206,7 @@ class Board {
         val firstVictim = captureMove.capture
         var attacker = pieces[captureMove.src.value]
 
-        val gain = IntArray(32)
-        gain[0] = SEE_MATERIAL_VALUES[firstVictim.type().idx()]
+        seeGain[0] = SEE_MATERIAL_VALUES[firstVictim.type().idx()]
 
         var d = 0
         var side = turn.opponent()
@@ -258,7 +260,7 @@ class Board {
                 break
             }
 
-            gain[d] = SEE_MATERIAL_VALUES[attacker.type().idx()] - gain[d-1]
+            seeGain[d] = SEE_MATERIAL_VALUES[attacker.type().idx()] - seeGain[d-1]
 
             attacker = pieces[nextAttackerSquare.value]
             attackerSquares.remove(nextAttackerSquare)
@@ -269,11 +271,11 @@ class Board {
         }
 
         while (d > 0) {
-            gain[d-1] = -max(-gain[d-1], gain[d])
+            seeGain[d-1] = -max(-seeGain[d-1], seeGain[d])
             d--
         }
 
-        return gain[0]
+        return seeGain[0]
     }
 
     fun areSquaresAttackedBy(squares: Bitboard, color: Color): Boolean {

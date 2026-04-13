@@ -4,7 +4,7 @@ class MoveGen(val position: Board, val engine: Engine) {
     var stage: Stage = Stage.HASH
 
     val quietMoves: ScoredMoveContainer = ScoredMoveContainer(128)
-    val goodCaptures: ScoredMoveContainer = ScoredMoveContainer(16)
+    val goodCaptures: ScoredMoveContainer = ScoredMoveContainer(32)
     val badCaptures: ScoredMoveContainer = ScoredMoveContainer(16)
     var currentMoveContainer: ScoredMoveContainer = quietMoves
     var finished: Boolean = false
@@ -12,8 +12,9 @@ class MoveGen(val position: Board, val engine: Engine) {
     var hashMove: Move? = null
     var killerMoves: Array<Move>? = null
     var genQuiets: Boolean = true
+    var doSEE: Boolean = false
 
-    fun begin(genQuiets: Boolean = true, hashMove: Move? = null, killerMoves: Array<Move>? = null) {
+    fun begin(genQuiets: Boolean = true, hashMove: Move? = null, killerMoves: Array<Move>? = null, doSEE: Boolean = false) {
         stage = Stage.HASH
 
         quietMoves.reset()
@@ -25,6 +26,7 @@ class MoveGen(val position: Board, val engine: Engine) {
         this.hashMove = hashMove
         this.killerMoves = killerMoves
         this.genQuiets = genQuiets
+        this.doSEE = doSEE
     }
 
     fun nextMove(): Move? {
@@ -34,7 +36,9 @@ class MoveGen(val position: Board, val engine: Engine) {
             // if there's still at least one buffered move, return it
             if (currentMoveContainer.hasNext()) {
 
-                val move = currentMoveContainer.selectMove(stage.sorted).toMove()
+                val move = currentMoveContainer.selectMove(
+                    stage.sorted && (!(stage == Stage.GOOD_CAPTURES || stage == Stage.BAD_CAPTURES) || doSEE)
+                ).toMove()
 
                 if (!currentMoveContainer.hasNext()) {
                     // if it was the last one, go to next stage
@@ -92,7 +96,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                                     val epMove = Move(src, position.epSquare, Piece(position.turn.opponent(), PieceType.PAWN), isEp = true)
 
                                     if (!position.isInCheckAfter(epMove)) {
-                                        val seeScore = position.see(epMove).toFloat()
+                                        val seeScore = if (doSEE) position.see(epMove).toFloat() else GOOD_CAPTURE_THRESHOLD
                                         (if (seeScore >= GOOD_CAPTURE_THRESHOLD) goodCaptures else badCaptures).addWithScore(
                                             epMove.toCompact(),
                                             seeScore
@@ -112,14 +116,14 @@ class MoveGen(val position: Board, val engine: Engine) {
                                         if (aggressorType == PieceType.PAWN.idx() && victimSquare.rank == position.turn.opponent().backRank()) {
                                             captureMove.forPromotionVariants { m ->
 
-                                                val seeScore = position.see(m).toFloat()
+                                                val seeScore = if (doSEE) position.see(m).toFloat() else GOOD_CAPTURE_THRESHOLD
                                                 (if (seeScore >= GOOD_CAPTURE_THRESHOLD) goodCaptures else badCaptures).addWithScore(
                                                     m.toCompact(),
                                                     seeScore
                                                 )
                                             }
                                         } else {
-                                            val seeScore = position.see(captureMove).toFloat()
+                                            val seeScore = if (doSEE) position.see(captureMove).toFloat() else GOOD_CAPTURE_THRESHOLD
                                             (if (seeScore >= GOOD_CAPTURE_THRESHOLD) goodCaptures else badCaptures).addWithScore(
                                                 captureMove.toCompact(),
                                                 seeScore
@@ -146,8 +150,10 @@ class MoveGen(val position: Board, val engine: Engine) {
                     }
                 }
 
-                Stage.CASTLE -> if (genQuiets) {
+                Stage.QUIET -> if (genQuiets) {
                     currentMoveContainer = quietMoves
+
+                    // generate castling moves
                     for (i in 0..3) {
                         if (position.castlingRights and Square.CASTLING_ROOK_SQUARES[i].bb() != 0L
                             && Bitboards.CASTLING_EMPTY[i] and position.occupiedBB == 0L
@@ -158,10 +164,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                             quietMoves.add(castlingMove.toCompact())
                         }
                     }
-                }
 
-                Stage.QUIET -> if (genQuiets) {
-                    currentMoveContainer = quietMoves
                     // generate missing non-captures
                     Bitboards.forAllSquares(position.colorsBB[position.turn.idx()]) { src ->
                         val piece = position.pieces[src.value]
@@ -238,7 +241,7 @@ class MoveGen(val position: Board, val engine: Engine) {
     }
 
     companion object {
-        const val GOOD_CAPTURE_THRESHOLD = 0
+        const val GOOD_CAPTURE_THRESHOLD = 0F
 
         val KNIGHT_ATTACKS: LongArray = LongArray(64) { idx ->
             relativeMoves(
@@ -338,13 +341,12 @@ class MoveGen(val position: Board, val engine: Engine) {
 
     enum class Stage(val sorted: Boolean = false) {
         HASH,
-        NC_PROM,
         CAPTURES_INIT,
         GOOD_CAPTURES(true),
         KILLER,
-        CASTLE,
-        QUIET(true),
-        BAD_CAPTURES(true);
+        NC_PROM,
+        BAD_CAPTURES,
+        QUIET(true);
 
         fun hasNext(): Boolean {
             return entries.size > (ordinal + 1)
