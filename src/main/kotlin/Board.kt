@@ -249,7 +249,11 @@ class Board {
 
             // get next attacker
             val nextAttackerSquare = attackerSquares.find { attackerSquare -> (attackerSquare.bb() and colorsBB[side.idx()]) != 0L}
-            if (nextAttackerSquare == null) {
+            // if there are...
+            if (nextAttackerSquare == null // ...no attackers left or...
+                || (nextAttackerSquare.bb() and piecesBB[PieceType.KING.idx()] != 0L // ...the attacker we got is a king (which can only get selected as the last piece for a side)...
+                        && attackersBB and nextAttackerSquare.bb().inv() != 0L) // ...and there are still other attackers left (which can only mean attackers of the other player, as the king was our last one)
+            ) {
                 d--
                 break
             }
