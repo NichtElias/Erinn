@@ -1,5 +1,8 @@
 package party.elias
 
+import kotlin.math.abs
+import kotlin.math.sign
+
 typealias Bitboard = Long
 typealias BitboardArray = LongArray
 
@@ -136,6 +139,85 @@ object Bitboards {
         LEFT_RIGHT[0] and (RANK_5 or RANK_6 or RANK_7 or RANK_8),
         LEFT_RIGHT[1] and (RANK_5 or RANK_6 or RANK_7 or RANK_8),
     )
+
+    val PAWN_MOVEABLE_AREAS: BitboardArray = longArrayOf(
+        RANK_8.inv() and RANK_7.inv(), // black
+        RANK_1.inv() and RANK_2.inv() // white
+    )
+
+    val PAWN_DOUBLE_PUSH_TARGET_RANKS: BitboardArray = longArrayOf(
+        RANK_5, // black
+        RANK_4 // white
+    )
+
+    val LINES: BitboardArray = BitboardArray(64 * 64)
+    val LINE_SEGMENTS: BitboardArray = BitboardArray(64 * 64)
+
+    init {
+        for (i in 0..63) {
+            for (j in 0..63) {
+                if (i == j) continue
+
+                var lineBB: Bitboard = 0
+                var segmentBB: Bitboard = 0
+
+                val a = Square(i)
+                val b = Square(j)
+                val relR = b.rank - a.rank
+                val relF = b.file - a.file
+                val dirR = relR.sign
+                val dirF = relF.sign
+
+                if (abs(relR) == abs(relF) || relR == 0 || relF == 0) { // squares arranged diagonally or orthogonally
+                    var cR = a.rank
+                    var cF = a.file
+
+                    var onSegment: Boolean = true
+
+                    while (true) {
+                        cR += dirR
+                        cF += dirF
+
+                        if (!(cR in 0..7 && cF in 0..7)) {
+                            break
+                        }
+
+                        val c = Square(cR, cF)
+
+                        if (c == b) {
+                            onSegment = false
+                        }
+
+                        lineBB = lineBB or c.bb()
+                        if (onSegment)
+                            segmentBB = segmentBB or c.bb()
+                    }
+
+                    cR = a.rank
+                    cF = a.file
+                    while (cR in 0..7 && cF in 0..7) {
+                        val c = Square(cR, cF)
+
+                        lineBB = lineBB or c.bb()
+
+                        cR -= dirR
+                        cF -= dirF
+                    }
+                }
+
+                LINES[i * 64 + j] = lineBB
+                LINE_SEGMENTS[i * 64 + j] = segmentBB
+            }
+        }
+    }
+
+    fun between(squareA: Square, squareB: Square): Bitboard {
+        return LINE_SEGMENTS[squareA.value * 64 + squareB.value]
+    }
+
+    fun line(squareA: Square, squareB: Square): Bitboard {
+        return LINES[squareA.value * 64 + squareB.value]
+    }
 
     inline fun forAllSquares(bb: Bitboard, f: (square: Square) -> Unit) {
         var bb = bb

@@ -29,6 +29,12 @@ value class PieceType(val value: Int) { // ...0ttt
     val name: String get() = NAMES[value]
     fun idx(): Int = value
 
+    fun isSliding(): Boolean {
+        return (value == BISHOP.idx()
+                || value == ROOK.idx()
+                || value == QUEEN.idx())
+    }
+
     companion object {
         val PAWN: PieceType   = PieceType(0b0000)
         val BISHOP: PieceType = PieceType(0b0001)

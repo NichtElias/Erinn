@@ -45,7 +45,7 @@ class Engine {
         if (bestScore > alpha) alpha = bestScore
 
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin(genQuiets = false)
+        moveGen.begin(genQuiets = false, inCheck = position.isColorInCheck(position.turn))
 
         while (true) {
             val move = moveGen.nextMove() ?: break
@@ -113,7 +113,7 @@ class Engine {
         var alphaRaised = false
 
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin(hashMove = ttEntry?.bestMove?.toMove(), killerMoves = killers[plyFromRoot])
+        moveGen.begin(inCheck = inCheck, hashMove = ttEntry?.bestMove?.toMove(), killerMoves = killers[plyFromRoot])
 
         while (true) {
             val move = moveGen.nextMove() ?: break
@@ -286,7 +286,7 @@ class Engine {
 
         var nodes = 0L
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin()
+        moveGen.begin(inCheck = position.isColorInCheck(position.turn))
 
         while (true) {
             val move = moveGen.nextMove() ?: break
@@ -302,7 +302,7 @@ class Engine {
         val results = HashMap<Move, Long>()
 
         val moveGen = moveGens[0]
-        moveGen.begin()
+        moveGen.begin(inCheck = position.isColorInCheck(position.turn))
 
         while (true) {
             val move = moveGen.nextMove() ?: break

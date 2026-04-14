@@ -42,7 +42,7 @@ class BoardTests {
         forRandomPositions(rng, 100, 10, 50) { b ->
             val allMoves = ArrayList<Move>()
             engine.position = b
-            engine.moveGens[0].begin()
+            engine.moveGens[0].begin(inCheck = b.isColorInCheck(b.turn))
 
             while (true) {
                 val move = engine.moveGens[0].nextMove() ?: break
@@ -60,7 +60,7 @@ class BoardTests {
                 val sampleMove = bunchOfRandomMoves[i]
 
                 var moveWasGenerated = false
-                engine.moveGens[0].begin()
+                engine.moveGens[0].begin(inCheck = b.isColorInCheck(b.turn))
                 while (true) {
                     val move = engine.moveGens[0].nextMove() ?: break
                     if (move == sampleMove) {
