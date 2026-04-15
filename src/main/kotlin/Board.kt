@@ -1,5 +1,7 @@
 package party.elias
 
+import java.util.TreeSet
+import kotlin.math.max
 import kotlin.math.min
 
 class Board {
@@ -16,6 +18,9 @@ class Board {
     val positionHistory: LongArray = LongArray(Engine.MAX_GAME_PLY) // stores hashes of all positions in the game history up to this one
     var posHistoryStart: Int = 0 // when loading from fen string, we can't know the previous positions, so anything before this index is invalid
     var currentKingProtectors: Bitboard = 0 // pieces preventing the <turn> king from being in check from sliding pieces
+
+    // just a reusable array for SEE, doesn't get affected by doMove/undoMove
+    val seeGain: IntArray = IntArray(32)
 
     val occupiedBB: Bitboard get() = colorsBB[0] or colorsBB[1]
     val ply: Int get() = (fullMoves - 1) * 2 + if (turn == Color.BLACK) 1 else 0 // for indexing positionHistory and the like
@@ -219,6 +224,85 @@ class Board {
         return false
     }
 
+    fun see(captureMove: Move): Score {
+
+        val SEE_MATERIAL_VALUES = intArrayOf(100, 300, 300, 500, 900, 20000)
+
+        val firstVictim = captureMove.capture
+        var attacker = pieces[captureMove.src.value]
+
+        seeGain[0] = SEE_MATERIAL_VALUES[firstVictim.type().idx()]
+
+        var d = 0
+        var side = turn.opponent()
+
+        val attackerSquares = TreeSet<Square>(Comparator { squareA, squareB ->
+            return@Comparator SEE_MATERIAL_VALUES[pieces[squareA.value].type().idx()] - SEE_MATERIAL_VALUES[pieces[squareB.value].type().idx()]
+        })
+
+        var attackersBB = ((attackersTargeting(captureMove.dst, Color.WHITE)
+                or attackersTargeting(captureMove.dst, Color.BLACK))
+                and captureMove.src.bb().inv())
+        Bitboards.forAllSquares(attackersBB) { attackerSquare ->
+            attackerSquares.add(attackerSquare)
+        }
+
+        var tempOcc = occupiedBB and captureMove.src.bb().inv()
+
+        while (true) {
+            d++
+
+            // add new attackers from x-ray attacks
+            var newAttackerBB = 0L
+            if (attacker.type() == PieceType.PAWN || attacker.type() == PieceType.BISHOP || attacker.type() == PieceType.QUEEN) {
+                newAttackerBB = newAttackerBB or (Magic.getBishopAttacks(captureMove.dst.value, tempOcc)
+                        and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()])
+                        and tempOcc and attackersBB.inv()
+                )
+            }
+            if (attacker.type() == PieceType.ROOK || attacker.type() == PieceType.QUEEN) {
+                newAttackerBB = newAttackerBB or (Magic.getRookAttacks(captureMove.dst.value, tempOcc)
+                        and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()])
+                        and tempOcc and attackersBB.inv()
+                )
+            }
+
+            if (newAttackerBB != 0L) {
+                assert(newAttackerBB.countOneBits() == 1) // can only be one new attacker per capture
+
+                attackersBB = attackersBB or newAttackerBB
+                attackerSquares.add(Square(newAttackerBB.countTrailingZeroBits()))
+            }
+
+            // get next attacker
+            val nextAttackerSquare = attackerSquares.find { attackerSquare -> (attackerSquare.bb() and colorsBB[side.idx()]) != 0L}
+            // if there are...
+            if (nextAttackerSquare == null // ...no attackers left or...
+                || (nextAttackerSquare.bb() and piecesBB[PieceType.KING.idx()] != 0L // ...the attacker we got is a king (which can only get selected as the last piece for a side)...
+                        && attackersBB and nextAttackerSquare.bb().inv() != 0L) // ...and there are still other attackers left (which can only mean attackers of the other player, as the king was our last one)
+            ) {
+                d--
+                break
+            }
+
+            seeGain[d] = SEE_MATERIAL_VALUES[attacker.type().idx()] - seeGain[d-1]
+
+            attacker = pieces[nextAttackerSquare.value]
+            attackerSquares.remove(nextAttackerSquare)
+            tempOcc = tempOcc and nextAttackerSquare.bb().inv()
+            attackersBB = attackersBB and tempOcc
+
+            side = side.opponent()
+        }
+
+        while (d > 0) {
+            seeGain[d-1] = -max(-seeGain[d-1], seeGain[d])
+            d--
+        }
+
+        return seeGain[0]
+    }
+
     fun areSquaresAttackedBy(squares: Bitboard, color: Color, occupancy: Bitboard = occupiedBB): Boolean {
         return Bitboards.checkSquares(squares) { square ->
             isSquareAttackedByNonKing(square, color, occupancy)
@@ -325,6 +409,7 @@ class Board {
 
     fun naiveIsInCheckAfter(move: Move): Boolean {
         val currentColor = turn
+
         val stateInfo = doMove(move)
         val inCheck = isColorInCheck(currentColor)
         undoMove(move, stateInfo)

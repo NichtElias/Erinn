@@ -72,7 +72,7 @@ class Engine {
 
         var remainingDepth = remainingDepth
 
-        if (nodesSearched++ and 4095 == 0L) {
+        if (nodesSearched++ and 255 == 0L) {
             if (stop) {
                 return Result.ABORT
             }
@@ -113,7 +113,7 @@ class Engine {
         var alphaRaised = false
 
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin(inCheck = inCheck, hashMove = ttEntry?.bestMove?.toMove(), killerMoves = killers[plyFromRoot])
+        moveGen.begin(inCheck = inCheck, hashMove = ttEntry?.bestMove?.toMove(), killerMoves = killers[plyFromRoot], doSEE = remainingDepth > 2)
 
         while (true) {
             val move = moveGen.nextMove() ?: break
