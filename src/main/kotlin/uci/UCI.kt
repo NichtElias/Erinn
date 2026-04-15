@@ -99,7 +99,7 @@ suspend fun run() {
                 println()
             } else {
 
-                var depthLimit = 64
+                var depthLimit = 48
                 var bTime = -1
                 var wTime = -1
                 var bInc = 0
@@ -109,7 +109,7 @@ suspend fun run() {
                 var i = 1
                 while (i < cmd.size) {
                     when (cmd[i]) {
-                        "depth" -> depthLimit = cmd[++i].toInt()
+                        "depth" -> depthLimit = min(cmd[++i].toInt(), 48)
                         "btime" -> bTime = cmd[++i].toInt()
                         "wtime" -> wTime = cmd[++i].toInt()
                         "binc" -> bInc = cmd[++i].toInt()
