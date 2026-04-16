@@ -2,6 +2,7 @@ package party.elias
 
 import party.elias.uci.sendUciInfo
 import kotlin.concurrent.Volatile
+import kotlin.math.abs
 import kotlin.time.TimeSource
 
 typealias Score = Int
@@ -104,11 +105,20 @@ class Engine {
 
         if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(plyFromRoot, alpha, beta))
 
+        // set futility pruning flag
+        val futilityPruning = (plyFromRoot > 0
+                && remainingDepth <= 3
+                && !isPV
+                && !inCheck
+                && abs(alpha) < 9000
+                && evaluate() + FUTILITY_MARGINS[remainingDepth] <= alpha)
+
         var alpha = alpha
 
         var bestScore: Score = -MATE_SCORE
         var bestMove: Move = Move.NULL_MOVE
         var moveCount = 0
+        var prunedMoves = 0
 
         var alphaRaised = false
 
@@ -117,12 +127,23 @@ class Engine {
 
         while (true) {
             val move = moveGen.nextMove() ?: break
+            moveCount++
 
             val stateInfo = position.doMove(move)
 
+            if (futilityPruning
+                && move.capture == Piece.NONE
+                && move.promotion == PieceType.NONE
+                && !position.isColorInCheck(position.turn)
+            ) {
+                position.undoMove(move, stateInfo)
+                prunedMoves++
+                continue
+            }
+
             var reduction = 0
 
-            if (!isPV && remainingDepth >= 3 && moveCount > 3
+            if (!isPV && remainingDepth >= 3 && moveCount > 4
                 && !inCheck && !position.isColorInCheck(position.turn) // we weren't in check and this move isn't putting the opponent in check
                 && !isKiller(move, plyFromRoot)
                 && move.capture == Piece.NONE
@@ -180,8 +201,6 @@ class Engine {
                     plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move)
                 return Result(bestMove, bestScore)
             }
-
-            moveCount++
         }
 
         if (moveCount == 0) {
@@ -190,6 +209,9 @@ class Engine {
 
             return Result.draw() // stalemate
         }
+
+        // we need to return something that isn't a checkmate score if we didn't actually search any moves
+        if (moveCount - prunedMoves == 0) return Result(Move.NULL_MOVE, alpha)
 
         if (alphaRaised) { // PV node
             tt.store(position.zobristHash, remainingDepth, position.turn,
@@ -333,6 +355,8 @@ class Engine {
         const val MAX_SEARCH_PLY: Int = 64
         const val MIN_MATE_SCORE: Score = MATE_SCORE - MAX_SEARCH_PLY
         const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
+
+        val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
     }
 
     data class Result(val move: Move, val score: Score, val aborted: Boolean = false) {
