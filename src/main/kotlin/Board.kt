@@ -17,7 +17,7 @@ class Board {
     var zobristHash: Long = 0
     val positionHistory: LongArray = LongArray(Engine.MAX_GAME_PLY) // stores hashes of all positions in the game history up to this one
     var posHistoryStart: Int = 0 // when loading from fen string, we can't know the previous positions, so anything before this index is invalid
-    var currentKingProtectors: Bitboard = 0 // pieces preventing the <turn> king from being in check from sliding pieces
+    val kingProtectors: BitboardArray = BitboardArray(2) // pieces preventing the kings from being in check from sliding pieces
 
     val nnueAccWhite: FloatArray = FloatArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
     val nnueAccBlack: FloatArray = FloatArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
@@ -58,7 +58,16 @@ class Board {
     }
 
     fun doMove(move: Move): StateInfo {
-        val stateInfo = StateInfo(castlingRights, epSquare, halfMoves, zobristHash, currentKingProtectors) // save some info for undoing the move
+        // save some info for undoing the move
+        val stateInfo = StateInfo(
+            castlingRights,
+            epSquare,
+            halfMoves,
+            zobristHash,
+            kingProtectors.clone(),
+            nnueAccWhite.clone(),
+            nnueAccBlack.clone()
+        )
 
         val movingPiece = pieces[move.src.value]
         val movingColor = movingPiece.color()
@@ -204,25 +213,27 @@ class Board {
         epSquare = stateInfo.epSquare
         halfMoves = stateInfo.halfMoves
         zobristHash = stateInfo.zobristHash
-        currentKingProtectors = stateInfo.currentKingProtectors
+        kingProtectors[0] = stateInfo.kingProtectors[0]
+        kingProtectors[1] = stateInfo.kingProtectors[1]
 
-        // update acc
-        if (movedType == PieceType.KING) {
-            resetAcc()
-            fillAccWithPresentFeatures()
-        } else {
-            updateAccWithFeatures(placedPieces, removedPieces)
-        }
+        // restore nnue accumulators
+        System.arraycopy(stateInfo.nnueAccWhite, 0, nnueAccWhite, 0, nnueAccWhite.size)
+        System.arraycopy(stateInfo.nnueAccBlack, 0, nnueAccBlack, 0, nnueAccBlack.size)
     }
 
     fun calcCheckInfo() {
-        val ksq = kingSquares[turn.idx()]
+        updateKingProtectors(Color.WHITE)
+        updateKingProtectors(Color.BLACK)
+    }
 
-        currentKingProtectors = 0
+    fun updateKingProtectors(color: Color) {
+        val ksq = kingSquares[color.idx()]
+
+        kingProtectors[color.idx()] = 0
 
         var snipers = (((MoveGen.ROOK_ATTACK_MASKS[ksq.value] and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()]))
                 or (MoveGen.BISHOP_ATTACK_MASKS[ksq.value] and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()]))
-                ) and colorsBB[turn.opponent().idx()])
+                ) and colorsBB[color.opponent().idx()])
 
         while (snipers != 0L) {
             val sniperSq = Square(snipers.countTrailingZeroBits())
@@ -231,7 +242,7 @@ class Board {
             val between = Bitboards.between(ksq, sniperSq) and occupiedBB
 
             if (between.countOneBits() == 1) {
-                currentKingProtectors = currentKingProtectors or between
+                kingProtectors[color.idx()] = kingProtectors[color.idx()] or between
             }
         }
     }
@@ -457,9 +468,31 @@ class Board {
         }
 
         // for all other moves we check if the piece is pinned and if it's moving away from the attack ray
-        return (currentKingProtectors and move.src.bb() != 0L // pinned
+        return (kingProtectors[turn.idx()] and move.src.bb() != 0L // pinned
                 && Bitboards.line(move.src, move.dst)
                 and colorsBB[turn.idx()] and piecesBB[PieceType.KING.idx()] == 0L)
+    }
+
+    fun putsOpponentInCheck(move: Move): Boolean {
+        // just take the easy way out if it's en passant
+        if (move.isEp) {
+            val stateInfo = doMove(move)
+            val putsInCheck = isColorInCheck(turn)
+            undoMove(move, stateInfo)
+            return putsInCheck
+        }
+
+        val opponentKingBB = colorsBB[turn.opponent().idx()] and piecesBB[PieceType.KING.idx()]
+
+        val movingPiece = pieces[move.src.value]
+        if (attacksOf(move.dst, movingPiece.type(), movingPiece.color()) and opponentKingBB != 0L) {
+            // we're moving to a square where we're attacking the king, so it's check
+            return true
+        }
+
+        return (kingProtectors[turn.opponent().idx()] and move.src.bb() != 0L // piece was preventing check
+            && Bitboards.line(move.src, move.dst) // and it's not moving on the line...
+            and opponentKingBB == 0L) // ...that the opponent's king is on
     }
 
     fun isPseudoLegalMove(move: Move): Boolean {
@@ -728,5 +761,13 @@ class Board {
         }
     }
 
-    class StateInfo(val castlingRights: Long, val epSquare: Square, val halfMoves: Int, val zobristHash: Long, val currentKingProtectors: Bitboard)
+    class StateInfo(
+        val castlingRights: Long,
+        val epSquare: Square,
+        val halfMoves: Int,
+        val zobristHash: Long,
+        val kingProtectors: BitboardArray,
+        val nnueAccWhite: FloatArray,
+        val nnueAccBlack: FloatArray
+    )
 }

@@ -267,7 +267,7 @@ class MoveGen(val position: Board, val engine: Engine) {
 
                 Bitboards.forAllSquares(epAttackers) { src ->
                     // can only use non-pinned pieces
-                    if (src.bb() and position.currentKingProtectors == 0L) {
+                    if (src.bb() and position.kingProtectors[position.turn.idx()] == 0L) {
                         currentMoveContainer.add(
                             Move(src, position.epSquare, position.pieces[checkerSq.value], isEp = true).toCompact()
                         )
@@ -279,7 +279,7 @@ class MoveGen(val position: Board, val engine: Engine) {
             val potentialCapturers = position.attackersTargeting(checkerSq, position.turn)
             Bitboards.forAllSquares(potentialCapturers) { src ->
                 // can only use non-pinned pieces and don't use the king, he'll have his chance when generating the king moves
-                if (src.bb() and position.currentKingProtectors == 0L && src != kingSquare) {
+                if (src.bb() and position.kingProtectors[position.turn.idx()] == 0L && src != kingSquare) {
 
                     val captureMove = Move(src, checkerSq, position.pieces[checkerSq.value])
 
@@ -300,7 +300,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                 Bitboards.forAllSquares(Bitboards.between(kingSquare, checkerSq)) { dst ->
                     Bitboards.forAllSquares(position.moversTargeting(dst, position.turn)) { src ->
                         // can only use non-pinned pieces and not the king
-                        if (src.bb() and position.currentKingProtectors == 0L && src != kingSquare) {
+                        if (src.bb() and position.kingProtectors[position.turn.idx()] == 0L && src != kingSquare) {
 
                             val interposeMove = Move(src, dst, Piece.NONE)
 
