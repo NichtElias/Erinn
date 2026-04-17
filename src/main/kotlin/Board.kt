@@ -19,8 +19,8 @@ class Board {
     var posHistoryStart: Int = 0 // when loading from fen string, we can't know the previous positions, so anything before this index is invalid
     var currentKingProtectors: Bitboard = 0 // pieces preventing the <turn> king from being in check from sliding pieces
 
-    val nnueAccWhite: FloatArray = FloatArray(NNUE.ACC_HALF_SIZE)
-    val nnueAccBlack: FloatArray = FloatArray(NNUE.ACC_HALF_SIZE)
+    val nnueAccWhite: FloatArray = FloatArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
+    val nnueAccBlack: FloatArray = FloatArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
 
     // just a reusable array for SEE, doesn't get affected by doMove/undoMove
     val seeGain: IntArray = IntArray(32)
@@ -511,7 +511,7 @@ class Board {
     }
 
     fun resetAcc() {
-        for (i in 0..<NNUE.ACC_HALF_SIZE) {
+        for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
             nnueAccWhite[i] = NNUE.ftBiases[i]
             nnueAccBlack[i] = NNUE.ftBiases[i]
         }
@@ -537,15 +537,15 @@ class Board {
                 + piece.type().idx() * 2
                 + if (piece.color() == Color.BLACK) 0 else 1)
 
-        val whiteFeatureOffset = whiteFeatureIdx * NNUE.ACC_HALF_SIZE
-        val blackFeatureOffset = blackFeatureIdx * NNUE.ACC_HALF_SIZE
+        val whiteFeatureOffset = whiteFeatureIdx * NNUE.ACC_HALF_WITH_PSQT_SIZE
+        val blackFeatureOffset = blackFeatureIdx * NNUE.ACC_HALF_WITH_PSQT_SIZE
         if (remove) {
-            for (i in 0..<NNUE.ACC_HALF_SIZE) {
+            for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
                 nnueAccWhite[i] -= NNUE.ftWeights[whiteFeatureOffset + i]
                 nnueAccBlack[i] -= NNUE.ftWeights[blackFeatureOffset + i]
             }
         } else {
-            for (i in 0..<NNUE.ACC_HALF_SIZE) {
+            for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
                 nnueAccWhite[i] += NNUE.ftWeights[whiteFeatureOffset + i]
                 nnueAccBlack[i] += NNUE.ftWeights[blackFeatureOffset + i]
             }
