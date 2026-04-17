@@ -49,7 +49,7 @@ object NNUE {
         var outOut = outBiases[0]
 
         for (j in 0..<(ACC_HALF_SIZE * 2)) {
-            outOut += accClamped[j] * outWeights[ACC_HALF_SIZE * 2 + j]
+            outOut += accClamped[j] * outWeights[j]
         }
         // clamp would go here last layer doesn't get clamped!
 
