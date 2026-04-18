@@ -35,7 +35,11 @@ class Engine {
     val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
 
     fun evaluate(): Score {
-        return NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack, position.turn)
+        return if (position.turn == Color.WHITE)
+            NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack, position.turn)
+        else
+            NNUE.evaluate(position.nnueAccBlack, position.nnueAccWhite, position.turn)
+
         //return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
 

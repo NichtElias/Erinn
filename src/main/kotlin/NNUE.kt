@@ -14,7 +14,7 @@ object NNUE {
     const val ACC_HALF_WITH_PSQT_SIZE = ACC_HALF_SIZE + 1
 
     val ftBiases: FloatArray = FloatArray(ACC_HALF_WITH_PSQT_SIZE)
-    val ftWeights: FloatArray = FloatArray(FEATURE_NUM * ACC_HALF_WITH_PSQT_SIZE) // this one is laid out differently, so that the weights for a single feature are contiguous in memory
+    val ftWeights: Array<FloatArray> = Array(FEATURE_NUM) { FloatArray(ACC_HALF_WITH_PSQT_SIZE) } // this one is laid out differently, so that the weights for a single feature are contiguous in memory
     val outBiases: FloatArray = FloatArray(1)
     val outWeights: FloatArray = FloatArray(ACC_HALF_SIZE * 2 * 1)
 
@@ -23,27 +23,22 @@ object NNUE {
         val buffer = ByteBuffer.wrap(bytes).asFloatBuffer()
 
         buffer.get(ftBiases)
-        buffer.get(ftWeights)
+        for (i in 0..<FEATURE_NUM) {
+            buffer.get(ftWeights[i])
+        }
         buffer.get(outBiases)
         buffer.get(outWeights)
     }
 
-    fun evaluate(accWhite: FloatArray, accBlack: FloatArray, turn: Color): Score {
+    fun evaluate(accOur: FloatArray, accTheir: FloatArray, turn: Color): Score {
         val accClamped = FloatArray(ACC_HALF_SIZE * 2)
 
-        val whiteOffset: Int
-        val blackOffset: Int
-        if (turn == Color.WHITE) {
-            whiteOffset = 0
-            blackOffset = ACC_HALF_SIZE
-        } else {
-            whiteOffset = ACC_HALF_SIZE
-            blackOffset = 0
+        for (i in 0..<ACC_HALF_SIZE) {
+            accClamped[i] = min(max(accOur[i], 0F), 1F)
         }
 
         for (i in 0..<ACC_HALF_SIZE) {
-            accClamped[i + whiteOffset] = min(max(accWhite[i], 0F), 1F)
-            accClamped[i + blackOffset] = min(max(accBlack[i], 0F), 1F)
+            accClamped[i + ACC_HALF_SIZE] = min(max(accTheir[i], 0F), 1F)
         }
 
         var outOut = outBiases[0]
@@ -53,7 +48,7 @@ object NNUE {
         }
         // clamp would go here last layer doesn't get clamped!
 
-        val psqtVal = (accWhite[ACC_HALF_SIZE] - accBlack[ACC_HALF_SIZE]) * (turn.idx() - 0.5F)
+        val psqtVal = (accOur[ACC_HALF_SIZE] - accTheir[ACC_HALF_SIZE]) * 0.5F
 
         return ((outOut + psqtVal) * 100).roundToInt()
     }
