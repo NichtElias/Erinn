@@ -101,7 +101,7 @@ class Engine {
 
         val inCheck = position.isColorInCheck(position.turn)
 
-        if (inCheck && remainingDepth == 0 && isPV) remainingDepth++ // check extension
+        if (inCheck && (plyFromRoot < 24 || remainingDepth == 0)) remainingDepth++ // check extension
 
         if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(plyFromRoot, alpha, beta))
 
