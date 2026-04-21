@@ -188,6 +188,47 @@ class Board {
         currentKingProtectors = stateInfo.currentKingProtectors
     }
 
+    fun doNullMove(): StateInfo {
+        val stateInfo = StateInfo(castlingRights, epSquare, halfMoves, zobristHash, currentKingProtectors) // save some info for undoing the move
+
+        // increment half moves
+        halfMoves++
+
+        // remove old ep file from hash
+        if (epSquare != Square(-1)) {
+            zobristHash = zobristHash xor TranspositionTable.HASH_EP_FILE[epSquare.file]
+        }
+
+        // set ep square
+        epSquare = Square(-1)
+
+        // update hash with turn change
+        zobristHash = zobristHash xor TranspositionTable.HASH_BLACK_TURN
+
+        // bookkeeping
+        fullMoves += if (turn == Color.BLACK) 1 else 0
+        turn = turn.opponent()
+        positionHistory[ply] = zobristHash
+
+        // calculate info related to being in check (currentKingProtectors)
+        calcCheckInfo()
+
+        return stateInfo
+    }
+
+    fun undoNullMove(stateInfo: StateInfo) {
+        // bookkeeping
+        turn = turn.opponent()
+        fullMoves -= if (turn == Color.BLACK) 1 else 0
+
+        // restore from StateInfo
+        castlingRights = stateInfo.castlingRights
+        epSquare = stateInfo.epSquare
+        halfMoves = stateInfo.halfMoves
+        zobristHash = stateInfo.zobristHash
+        currentKingProtectors = stateInfo.currentKingProtectors
+    }
+
     fun calcCheckInfo() {
         val ksq = kingSquares[turn.idx()]
 
@@ -207,6 +248,12 @@ class Board {
                 currentKingProtectors = currentKingProtectors or between
             }
         }
+    }
+
+    fun nonKpPieceCount(color: Color): Int {
+        return ((piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.KNIGHT.idx()]
+                or piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()]
+                ) and colorsBB[color.idx()]).countOneBits()
     }
 
     fun isDrawByRepetition(): Boolean {
