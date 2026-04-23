@@ -3,7 +3,7 @@ package party.elias
 class MoveGen(val position: Board, val engine: Engine) {
     var stage: Stage = Stage.HASH
 
-    val quietMoves: ScoredMoveContainer = ScoredMoveContainer(128)
+    val quietMoves: ScoredMoveContainer = ScoredMoveContainer(192)
     val goodCaptures: ScoredMoveContainer = ScoredMoveContainer(32)
     val badCaptures: ScoredMoveContainer = ScoredMoveContainer(16)
     var currentMoveContainer: ScoredMoveContainer = quietMoves
