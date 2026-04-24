@@ -19,8 +19,8 @@ class Board {
     var posHistoryStart: Int = 0 // when loading from fen string, we can't know the previous positions, so anything before this index is invalid
     val kingProtectors: BitboardArray = BitboardArray(2) // pieces preventing the kings from being in check from sliding pieces
 
-    val nnueAccWhite: FloatArray = FloatArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
-    val nnueAccBlack: FloatArray = FloatArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
+    val nnueAccWhite: IntArray = IntArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
+    val nnueAccBlack: IntArray = IntArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
 
     // just a reusable array for SEE, doesn't get affected by doMove/undoMove
     val seeGain: IntArray = IntArray(32)
@@ -154,12 +154,12 @@ class Board {
         positionHistory[ply] = zobristHash
 
         // update acc
-        if (movingType == PieceType.KING) {
-            resetAcc()
-            fillAccWithPresentFeatures()
-        } else {
-            updateAccWithFeatures(placedPieces, removedPieces)
-        }
+//        if (movingType == PieceType.KING) {
+//            resetAcc()
+//            fillAccWithPresentFeatures()
+//        } else {
+        updateAccWithFeatures(placedPieces, removedPieces)
+//        }
 
         // calculate info related to being in check (currentKingProtectors)
         calcCheckInfo()
@@ -561,13 +561,11 @@ class Board {
     }
 
     fun updateAccWithFeature(whiteKingSquare: Square, blackKingSquare: Square, square: Square, piece: Piece, remove: Boolean) {
-        val whiteFeatureIdx = (whiteKingSquare.value * 64 * 5 * 2
-                + square.value * 5 * 2
-                + piece.type().idx() * 2
+        val whiteFeatureIdx = (piece.type().idx() * 64 * 2
+                + square.value * 2
                 + if (piece.color() == Color.WHITE) 0 else 1)
-        val blackFeatureIdx = (blackKingSquare.mirror.value * 64 * 5 * 2
-                + square.mirror.value * 5 * 2
-                + piece.type().idx() * 2
+        val blackFeatureIdx = (piece.type().idx() * 64 * 2
+                + square.mirror.value * 2
                 + if (piece.color() == Color.BLACK) 0 else 1)
 
         val whiteFeatureWeights = NNUE.ftWeights[whiteFeatureIdx]
@@ -767,7 +765,7 @@ class Board {
         val halfMoves: Int,
         val zobristHash: Long,
         val kingProtectors: BitboardArray,
-        val nnueAccWhite: FloatArray,
-        val nnueAccBlack: FloatArray
+        val nnueAccWhite: IntArray,
+        val nnueAccBlack: IntArray
     )
 }

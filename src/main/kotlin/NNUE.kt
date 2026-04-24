@@ -9,18 +9,21 @@ import kotlin.math.roundToInt
 
 object NNUE {
 
-    const val FEATURE_NUM = 64 * 64 * 5 * 2
-    const val ACC_HALF_SIZE = 128
-    const val ACC_HALF_WITH_PSQT_SIZE = ACC_HALF_SIZE + 1
+    const val FEATURE_NUM = 6 * 64 * 2
+    const val ACC_HALF_SIZE = 8
+    const val ACC_HALF_WITH_PSQT_SIZE = ACC_HALF_SIZE + 0
 
-    val ftBiases: FloatArray = FloatArray(ACC_HALF_WITH_PSQT_SIZE)
-    val ftWeights: Array<FloatArray> = Array(FEATURE_NUM) { FloatArray(ACC_HALF_WITH_PSQT_SIZE) } // this one is laid out differently, so that the weights for a single feature are contiguous in memory
-    val outBiases: FloatArray = FloatArray(1)
-    val outWeights: FloatArray = FloatArray(ACC_HALF_SIZE * 2 * 1)
+    val ftBiases: IntArray = IntArray(ACC_HALF_WITH_PSQT_SIZE)
+    val ftWeights: Array<IntArray> = Array(FEATURE_NUM) { IntArray(ACC_HALF_WITH_PSQT_SIZE) } // this one is laid out differently, so that the weights for a single feature are contiguous in memory
+    val outBiases: IntArray = IntArray(1)
+    val outWeights: IntArray = IntArray(ACC_HALF_SIZE * 2 * 1)
+
+    const val Q_SCALE_FT = 8191
+    const val Q_SCALE_OUT = 2048
 
     fun load() {
         val bytes = Files.readAllBytes(Paths.get("model.bin"))
-        val buffer = ByteBuffer.wrap(bytes).asFloatBuffer()
+        val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
 
         buffer.get(ftBiases)
         for (i in 0..<FEATURE_NUM) {
@@ -30,15 +33,15 @@ object NNUE {
         buffer.get(outWeights)
     }
 
-    fun evaluate(accOur: FloatArray, accTheir: FloatArray, turn: Color): Score {
-        val accClamped = FloatArray(ACC_HALF_SIZE * 2)
+    fun evaluate(accOur: IntArray, accTheir: IntArray): Score {
+        val accClamped = IntArray(ACC_HALF_SIZE * 2)
 
         for (i in 0..<ACC_HALF_SIZE) {
-            accClamped[i] = min(max(accOur[i], 0F), 1F)
+            accClamped[i] = min(max(accOur[i], 0), Q_SCALE_FT)
         }
 
         for (i in 0..<ACC_HALF_SIZE) {
-            accClamped[i + ACC_HALF_SIZE] = min(max(accTheir[i], 0F), 1F)
+            accClamped[i + ACC_HALF_SIZE] = min(max(accTheir[i], 0), Q_SCALE_FT)
         }
 
         var outOut = outBiases[0]
@@ -46,10 +49,7 @@ object NNUE {
         for (j in 0..<(ACC_HALF_SIZE * 2)) {
             outOut += accClamped[j] * outWeights[j]
         }
-        // clamp would go here last layer doesn't get clamped!
 
-        val psqtVal = (accOur[ACC_HALF_SIZE] - accTheir[ACC_HALF_SIZE]) * 0.5F
-
-        return ((outOut + psqtVal) * 100).roundToInt()
+        return outOut / Q_SCALE_OUT * 512 / Q_SCALE_FT
     }
 }

@@ -36,9 +36,9 @@ class Engine {
 
     fun evaluate(): Score {
         return if (position.turn == Color.WHITE)
-            NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack, position.turn)
+            NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack)
         else
-            NNUE.evaluate(position.nnueAccBlack, position.nnueAccWhite, position.turn)
+            NNUE.evaluate(position.nnueAccBlack, position.nnueAccWhite)
 
         //return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
