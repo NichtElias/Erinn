@@ -586,7 +586,7 @@ class Board {
     fun updateAccWithFeatures(placedPieces: ArrayList<Pair<Piece, Square>>, removedPieces: ArrayList<Pair<Piece, Square>>? = null) {
 
         for ((piece, square) in placedPieces) {
-            if (piece.type() != PieceType.KING) {
+            //if (piece.type() != PieceType.KING) {
                 updateAccWithFeature(
                     kingSquares[Color.WHITE.idx()],
                     kingSquares[Color.BLACK.idx()],
@@ -594,12 +594,12 @@ class Board {
                     piece,
                     false
                 )
-            }
+            //}
         }
 
         if (removedPieces != null) {
             for ((piece, square) in removedPieces) {
-                if (piece.type() != PieceType.KING) {
+                //if (piece.type() != PieceType.KING) {
                     updateAccWithFeature(
                         kingSquares[Color.WHITE.idx()],
                         kingSquares[Color.BLACK.idx()],
@@ -607,7 +607,7 @@ class Board {
                         piece,
                         true
                     )
-                }
+                //}
             }
         }
     }

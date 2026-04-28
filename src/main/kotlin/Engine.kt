@@ -35,10 +35,11 @@ class Engine {
     val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
 
     fun evaluate(): Score {
+        val pieceCount = position.occupiedBB.countOneBits()
         return if (position.turn == Color.WHITE)
-            NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack)
+            NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack, pieceCount)
         else
-            NNUE.evaluate(position.nnueAccBlack, position.nnueAccWhite)
+            NNUE.evaluate(position.nnueAccBlack, position.nnueAccWhite, pieceCount)
 
         //return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }

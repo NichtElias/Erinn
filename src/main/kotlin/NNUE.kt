@@ -5,21 +5,21 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 
 object NNUE {
 
     const val FEATURE_NUM = 6 * 64 * 2
-    const val ACC_HALF_SIZE = 8
-    const val ACC_HALF_WITH_PSQT_SIZE = ACC_HALF_SIZE + 0
+    const val ACC_HALF_SIZE = 256
+    const val PSQT_BUCKETS = 8
+    const val ACC_HALF_WITH_PSQT_SIZE = ACC_HALF_SIZE + PSQT_BUCKETS
 
     val ftBiases: IntArray = IntArray(ACC_HALF_WITH_PSQT_SIZE)
     val ftWeights: Array<IntArray> = Array(FEATURE_NUM) { IntArray(ACC_HALF_WITH_PSQT_SIZE) } // this one is laid out differently, so that the weights for a single feature are contiguous in memory
     val outBiases: IntArray = IntArray(1)
     val outWeights: IntArray = IntArray(ACC_HALF_SIZE * 2 * 1)
 
-    const val Q_SCALE_FT = 8191
-    const val Q_SCALE_OUT = 2048
+    const val Q_SCALE_ACTIVATION = 8191
+    const val Q_SCALE_OTHER = 2048
 
     fun load() {
         val bytes = Files.readAllBytes(Paths.get("model.bin"))
@@ -33,15 +33,15 @@ object NNUE {
         buffer.get(outWeights)
     }
 
-    fun evaluate(accOur: IntArray, accTheir: IntArray): Score {
+    fun evaluate(accOur: IntArray, accTheir: IntArray, pieceCount: Int): Score {
         val accClamped = IntArray(ACC_HALF_SIZE * 2)
 
         for (i in 0..<ACC_HALF_SIZE) {
-            accClamped[i] = min(max(accOur[i], 0), Q_SCALE_FT)
+            accClamped[i] = min(max(accOur[i], 0), Q_SCALE_ACTIVATION)
         }
 
         for (i in 0..<ACC_HALF_SIZE) {
-            accClamped[i + ACC_HALF_SIZE] = min(max(accTheir[i], 0), Q_SCALE_FT)
+            accClamped[i + ACC_HALF_SIZE] = min(max(accTheir[i], 0), Q_SCALE_ACTIVATION)
         }
 
         var outOut = outBiases[0]
@@ -50,6 +50,10 @@ object NNUE {
             outOut += accClamped[j] * outWeights[j]
         }
 
-        return outOut / Q_SCALE_OUT * 512 / Q_SCALE_FT
+        val psqtBucketIndex = (pieceCount - 1) / 4
+
+        val psqtValue = (accOur[ACC_HALF_SIZE + psqtBucketIndex] - accTheir[ACC_HALF_SIZE + psqtBucketIndex]) * Q_SCALE_OTHER / 2
+
+        return (outOut + psqtValue) / Q_SCALE_OTHER * 512 / Q_SCALE_ACTIVATION
     }
 }
