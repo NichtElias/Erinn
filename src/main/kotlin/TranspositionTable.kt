@@ -2,18 +2,19 @@ package party.elias
 
 import kotlin.random.Random
 
-class TranspositionTable {
+class TranspositionTable(capacityExponent: Int) {
 
-    val entries: Array<Entry?> = Array(TT_SIZE) { null }
+    val indexMask: Long = (1L shl capacityExponent) - 1
+    val entries: Array<Entry?> = Array(1 shl capacityExponent) { null }
 
     fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move? = null) {
         val entry = Entry(key, draft, adjustScore(score, perspective, plyFromRoot), boundType, (bestMove ?: Move.NULL_MOVE).toCompact())
 
-        entries[(key and TT_INDEX_MASK).toInt()] = entry
+        entries[(key and indexMask).toInt()] = entry
     }
 
     fun get(key: Long): Entry? {
-        val entry = entries[(key and TT_INDEX_MASK).toInt()]
+        val entry = entries[(key and indexMask).toInt()]
         if (entry?.key == key)
             return entry
         return null
@@ -26,8 +27,13 @@ class TranspositionTable {
     }
 
     companion object {
-        const val TT_SIZE: Int = 0x200000
-        const val TT_INDEX_MASK: Long = (TT_SIZE - 1).toLong()
+        const val ENTRY_SIZE = (4 // reference to entry in array (reference)
+                + 16 // object header
+                + 8 // key (long)
+                + 4 // draft (int)
+                + 4 // score (int)
+                + 4 // bound type (reference)
+                + 4) // best move (int)
 
         const val SEED = 84927659
 

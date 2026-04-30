@@ -3,6 +3,7 @@ package party.elias
 import party.elias.uci.sendUciInfo
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
+import kotlin.math.log2
 import kotlin.time.TimeSource
 
 typealias Score = Int
@@ -17,7 +18,7 @@ class Engine {
 
     var moveGens: Array<MoveGen> = Array(MAX_SEARCH_PLY) { MoveGen(position, this) }
 
-    val tt: TranspositionTable = TranspositionTable()
+    var tt: TranspositionTable = TranspositionTable(22)
 
     @Volatile
     var stop: Boolean = false
@@ -374,6 +375,10 @@ class Engine {
         }
 
         return pv
+    }
+
+    fun setHashTableSize(sizeInMiB: Int) {
+        tt = TranspositionTable(log2((sizeInMiB * (1 shl 20)).toFloat() / TranspositionTable.ENTRY_SIZE).toInt())
     }
 
     companion object {

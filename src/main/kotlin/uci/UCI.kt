@@ -41,7 +41,25 @@ suspend fun run() {
 
             println("id name schachn")
             println("id author NichtElias")
+            println("option name Hash type spin default 256 min 1 max 8192")
             println("uciok")
+
+        } else if (cmd[0] == "setoption") {
+
+            if (cmd[1] == "name") {
+                val name = cmd[2]
+
+                if (cmd.size >= 5 && cmd[3] == "value") {
+                    val value = cmd[4]
+
+                    when (name) {
+                        "Hash" -> {
+                            engine.setHashTableSize(value.toInt())
+                        }
+                    }
+                }
+
+            }
 
         } else if (cmd[0] == "isready") {
 
