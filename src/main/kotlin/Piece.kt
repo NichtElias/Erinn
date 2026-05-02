@@ -52,6 +52,10 @@ value class PieceType(val value: Int) { // ...0ttt
         val SLIDING_PIECES: IntArray = intArrayOf(BISHOP.idx(), ROOK.idx(), QUEEN.idx())
 
         val VALUES: IntArray = intArrayOf(100, 300, 300, 500, 1000, 400)
+
+        val BISHOP_KNIGHT_SWAP_MAP: IntArray = intArrayOf(
+            PAWN.idx(), KNIGHT.idx(), BISHOP.idx(), ROOK.idx(), QUEEN.idx(), KING.idx()
+        )
     }
 }
 

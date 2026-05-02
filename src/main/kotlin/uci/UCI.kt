@@ -12,6 +12,7 @@ import party.elias.Limits
 import party.elias.Move
 import party.elias.Score
 import party.elias.TranspositionTable
+import java.io.File
 import kotlin.collections.isEmpty
 import kotlin.math.abs
 import kotlin.math.max
@@ -180,6 +181,17 @@ suspend fun run() {
                     println("draw by threefold repetition")
                 }
             }
+
+        } else if (cmd[0] == "genpos") {
+
+            val depth = cmd[1].toInt()
+            val gameCount = cmd[2].toInt()
+            val seed = cmd[3].toInt()
+            val file = cmd[4]
+
+            engine.genEvalPosFromSelfPlayGames(seed, depth, gameCount, File(file))
+
+            println("genposdone")
 
         }
     }

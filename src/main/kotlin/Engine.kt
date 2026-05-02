@@ -1,9 +1,13 @@
 package party.elias
 
 import party.elias.uci.sendUciInfo
+import java.io.File
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.log2
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 typealias Score = Int
@@ -34,6 +38,8 @@ class Engine {
 
     val pvTable: CompactMoveArray = CompactMoveArray(MAX_SEARCH_PLY * MAX_SEARCH_PLY)
     val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
+
+    var printInfo: Boolean = true
 
     fun evaluate(): Score {
         return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
@@ -288,7 +294,8 @@ class Engine {
             deepestResult = result
 
             val elapsed = TimeSource.Monotonic.markNow() - searchStartTime
-            sendUciInfo(d, elapsed, nodesSearched, result.score, getPv())
+            if (printInfo)
+                sendUciInfo(d, elapsed, nodesSearched, result.score, getPv())
 
             if (elapsed > limits.softTime) {
                 return deepestResult
@@ -367,6 +374,76 @@ class Engine {
         return results
     }
 
+    fun genEvalPosFromSelfPlayGame(searchDepth: Int, file: File, rng: Random): Int {
+
+        val inCheck = position.isColorInCheck(position.turn)
+
+        val moveGen = MoveGen(position, this)
+
+        moveGen.begin(inCheck = inCheck)
+        // test if game is over
+        if (moveGen.nextMove() == null || position.isDrawByRepetition() || position.halfMoves >= 50) {
+            return 0
+        }
+
+        val secondMove = moveGen.nextMove()
+
+        val result = iterDeep(Limits(searchDepth))
+
+        moveGen.begin(genQuiets = false, inCheck = inCheck)
+
+        var wrotePos = 0
+
+        // check for quietness
+        if (moveGen.nextMove() == null && !inCheck) {
+            val binPos =
+                position.toBinaryPosition(scoreToWdl(if (position.turn == Color.WHITE) result.score else -result.score))
+
+            file.appendBytes(binPos)
+            wrotePos = 1
+        }
+
+        // play some "random" move some of the time so not every game is the same
+        val move = if (secondMove != null && rng.nextFloat() < 0.1) secondMove else result.move
+
+        val stateInfo = position.doMove(move)
+
+        val followingPositions = genEvalPosFromSelfPlayGame(searchDepth, file, rng)
+
+        position.undoMove(move, stateInfo)
+
+        return wrotePos + followingPositions
+    }
+
+    fun genEvalPosFromSelfPlayGames(seed: Int, searchDepth: Int, games: Int, file: File) {
+        val rng = Random(seed)
+
+        var positionsGenerated = 0
+
+        var lastInfoPrint = TimeSource.Monotonic.markNow()
+
+        val prevPrintInfoState = printInfo
+        printInfo = false
+
+        for (i in 0..<games) {
+            tt.clear()
+            position = Board.startPos()
+            makeRandomMoves(rng, 4, 12)
+
+            positionsGenerated += genEvalPosFromSelfPlayGame(searchDepth, file, rng)
+
+            val currentTimeStamp = TimeSource.Monotonic.markNow()
+            if (currentTimeStamp - lastInfoPrint > 5.seconds) {
+                lastInfoPrint = currentTimeStamp
+
+                println("generated $positionsGenerated positions")
+            }
+        }
+        println("generated $positionsGenerated positions")
+
+        printInfo = prevPrintInfoState
+    }
+
     fun getPv(): ArrayList<Move> {
         val pv = ArrayList<Move>()
 
@@ -381,6 +458,24 @@ class Engine {
         tt = TranspositionTable(log2((sizeInMiB * (1 shl 20)).toFloat() / TranspositionTable.ENTRY_SIZE).toInt())
     }
 
+    fun makeRandomMoves(rng: Random, minMoves: Int, maxMoves: Int) {
+        for (m in 0..rng.nextInt(minMoves, maxMoves)) {
+            val allMoves = ArrayList<Move>()
+
+            // moveGens[0] used for all moves, as they're generated and made sequentially
+            moveGens[0].begin(inCheck = position.isColorInCheck(position.turn))
+
+            while (true) {
+                val move = moveGens[0].nextMove() ?: break
+                allMoves.add(move)
+            }
+
+            if (allMoves.isEmpty()) break
+
+            position.doMove(allMoves[rng.nextInt(allMoves.size)])
+        }
+    }
+
     companion object {
         const val MATE_SCORE: Score = 32000
         const val MAX_SEARCH_PLY: Int = 64
@@ -388,6 +483,14 @@ class Engine {
         const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
 
         val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
+
+        fun scoreToWdl(score: Score): Float {
+            if (abs(score) >= MIN_MATE_SCORE) {
+                return if (score > 0) 1F else 0F
+            }
+
+            return 1F / (1F + exp(-score  / 400F))
+        }
     }
 
     data class Result(val move: Move, val score: Score, val aborted: Boolean = false) {

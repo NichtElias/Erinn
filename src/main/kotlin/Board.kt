@@ -598,7 +598,77 @@ class Board {
         return sb.toString()
     }
 
+    fun toBinaryPosition(wdl: Float): ByteArray {
+        val wdl16 = java.lang.Float.floatToFloat16(wdl)
+
+        val wKingSq = kingSquares[Color.WHITE.idx()]
+        val bKingSq = kingSquares[Color.BLACK.idx()]
+
+        var nibbleCount = 0
+        val piecesBuffer: IntArray = IntArray(32)
+
+        var emptyCount = 0
+
+        for (sq in 0..63) {
+            val piece = pieces[sq]
+
+            if (piece == Piece.NONE || piece.type() == PieceType.KING) {
+                emptyCount++
+
+                if (emptyCount == 6) {
+                    piecesBuffer[nibbleCount / 2] = piecesBuffer[nibbleCount / 2] or (
+                            0b1111 shl if ((nibbleCount and 1) == 0) 4 else 0
+                    )
+                    nibbleCount++
+                    emptyCount = 0
+                }
+
+            } else {
+
+                if (emptyCount > 0) {
+                    piecesBuffer[nibbleCount / 2] = piecesBuffer[nibbleCount / 2] or (
+                            BINARY_POSITION_EMPTY_MARKERS[emptyCount - 1] shl if ((nibbleCount and 1) == 0) 4 else 0
+                    )
+                    nibbleCount++
+                    emptyCount = 0
+                }
+
+                piecesBuffer[nibbleCount / 2] = piecesBuffer[nibbleCount / 2] or (
+                        (piece.color().value or PieceType.BISHOP_KNIGHT_SWAP_MAP[piece.type().idx()]) shl if ((nibbleCount and 1) == 0) 4 else 0
+                )
+                nibbleCount++
+
+            }
+        }
+
+        if (emptyCount > 0) {
+            piecesBuffer[nibbleCount / 2] = piecesBuffer[nibbleCount / 2] or (
+                    BINARY_POSITION_EMPTY_MARKERS[emptyCount - 1] shl if ((nibbleCount and 1) == 0) 4 else 0
+                    )
+            nibbleCount++
+            emptyCount = 0
+        }
+
+        val binPos = ByteArray(5 + (nibbleCount + 1) / 2)
+
+        binPos[0] = ((wdl16.toInt() and 0xFFFF) ushr 8).toByte()
+        binPos[1] = (wdl16.toInt() and 0xFF).toByte()
+
+        binPos[2] = ((turn.idx() shl 6) or wKingSq.value and 0x3F).toByte()
+        binPos[3] = (bKingSq.value and 0x3F).toByte()
+
+        binPos[4] = nibbleCount.toByte()
+
+        for (i in 0..<((nibbleCount + 1) / 2)) {
+            binPos[i + 5] = piecesBuffer[i].toByte()
+        }
+
+        return binPos
+    }
+
     companion object {
+        private val BINARY_POSITION_EMPTY_MARKERS = intArrayOf(0b0101, 0b0110, 0b0111, 0b1101, 0b1110, 0b1111)
+
         fun fromFen(fen: String): Board {
             val board = Board()
 
