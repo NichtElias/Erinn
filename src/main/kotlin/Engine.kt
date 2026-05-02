@@ -42,7 +42,13 @@ class Engine {
     var printInfo: Boolean = true
 
     fun evaluate(): Score {
-        return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
+        val pieceCount = position.occupiedBB.countOneBits()
+        return if (position.turn == Color.WHITE)
+            NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack, pieceCount)
+        else
+            NNUE.evaluate(position.nnueAccBlack, position.nnueAccWhite, pieceCount)
+
+        //return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
 
     fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score): Score {
@@ -162,22 +168,23 @@ class Engine {
             val move = moveGen.nextMove() ?: break
             moveCount++
 
-            val stateInfo = position.doMove(move)
+            val putsInCheck = position.putsOpponentInCheck(move)
 
             if (futilityPruning
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
-                && !position.isColorInCheck(position.turn)
+                && !putsInCheck
             ) {
-                position.undoMove(move, stateInfo)
                 prunedMoves++
                 continue
             }
 
+            val stateInfo = position.doMove(move)
+
             var reduction = 0
 
             if (!isPV && remainingDepth >= 3 && moveCount > 4
-                && !inCheck && !position.isColorInCheck(position.turn) // we weren't in check and this move isn't putting the opponent in check
+                && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
                 && !isKiller(move, plyFromRoot)
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE

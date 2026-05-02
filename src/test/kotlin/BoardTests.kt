@@ -18,7 +18,7 @@ class BoardTests {
             for (m in 0..rng.nextInt(minMoves, maxMoves)) {
                 val allMoves = ArrayList<Move>()
 
-                engine.moveGens[0].begin()
+                engine.moveGens[m].begin(inCheck = engine.position.isColorInCheck(engine.position.turn))
 
                 while (true) {
                     val move = engine.moveGens[0].nextMove() ?: break
@@ -27,9 +27,9 @@ class BoardTests {
 
                 if (allMoves.isEmpty()) break
 
-                engine.position.doMove(allMoves[rng.nextInt(allMoves.size)])
-
                 f(engine.position)
+
+                engine.position.doMove(allMoves[rng.nextInt(allMoves.size)])
             }
         }
     }
@@ -88,5 +88,26 @@ class BoardTests {
         seeTestHelper("2k5/2p5/p7/1p2N3/1b2ppP1/1P2nP2/P3B1P1/n1K5 b - - 0 23", "a1b3", -200)
         seeTestHelper("r2k1b1r/pp1bpBpp/2n2n2/8/1q1P4/1QN2N2/PP3PPP/R1B1K2R w KQ - 1 11", "b3b4", 0)
         seeTestHelper("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - - 0 1", "d3e5", -200)
+    }
+
+    @Test
+    fun putsOpponentInCheckTest() {
+        val rng = Random(3865252)
+        val engine = Engine()
+
+        forRandomPositions(rng, 100, 0, 200) { b ->
+            engine.position = b
+            engine.moveGens[0].begin(inCheck = b.isColorInCheck(b.turn))
+
+            while (true) {
+                val move = engine.moveGens[0].nextMove() ?: break
+
+                val stateInfo = engine.position.doMove(move)
+                val putsInCheck = engine.position.isColorInCheck(engine.position.turn)
+                engine.position.undoMove(move, stateInfo)
+
+                assertEquals(putsInCheck, engine.position.putsOpponentInCheck(move), "unexpected putsOpponentInCheck result for move ${move.toUci()} at position fen ${b.toFen()}")
+            }
+        }
     }
 }
