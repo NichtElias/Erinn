@@ -154,12 +154,12 @@ class Board {
         positionHistory[ply] = zobristHash
 
         // update acc
-//        if (movingType == PieceType.KING) {
-//            resetAcc()
-//            fillAccWithPresentFeatures()
-//        } else {
-        updateAccWithFeatures(placedPieces, removedPieces)
-//        }
+        if (movingType == PieceType.KING) {
+            resetAcc()
+            fillAccWithPresentFeatures()
+        } else {
+            updateAccWithFeatures(placedPieces, removedPieces)
+        }
 
         // calculate info related to being in check (currentKingProtectors)
         calcCheckInfo()
@@ -553,7 +553,7 @@ class Board {
     fun fillAccWithPresentFeatures() {
         val placedPieces = ArrayList<Pair<Piece, Square>>()
         for (sq in 0..63) {
-            if (pieces[sq].type() != PieceType.NONE && pieces[sq].type() != PieceType.KING) {
+            if (pieces[sq].type() != PieceType.NONE) {
                 placedPieces.add(Pair(pieces[sq], Square(sq)))
             }
         }
@@ -561,12 +561,14 @@ class Board {
     }
 
     fun updateAccWithFeature(whiteKingSquare: Square, blackKingSquare: Square, square: Square, piece: Piece, remove: Boolean) {
-        val whiteFeatureIdx = (piece.type().idx() * 64 * 2
-                + square.value * 2
-                + if (piece.color() == Color.WHITE) 0 else 1)
-        val blackFeatureIdx = (piece.type().idx() * 64 * 2
-                + square.mirror.value * 2
-                + if (piece.color() == Color.BLACK) 0 else 1)
+        val whiteFeatureIdx = (piece.type().idx() * 2 * 64 * 64
+                + (if (piece.color() == Color.WHITE) 0 else 1) * 64 * 64
+                + whiteKingSquare.value * 64
+                + square.value)
+        val blackFeatureIdx = (piece.type().idx() * 2 * 64 * 64
+                + (if (piece.color() == Color.BLACK) 0 else 1) * 64 * 64
+                + blackKingSquare.mirror.value * 64
+                + square.mirror.value)
 
         val whiteFeatureWeights = NNUE.ftWeights[whiteFeatureIdx]
         val blackFeatureWeights = NNUE.ftWeights[blackFeatureIdx]
@@ -586,28 +588,24 @@ class Board {
     fun updateAccWithFeatures(placedPieces: ArrayList<Pair<Piece, Square>>, removedPieces: ArrayList<Pair<Piece, Square>>? = null) {
 
         for ((piece, square) in placedPieces) {
-            //if (piece.type() != PieceType.KING) {
+            updateAccWithFeature(
+                kingSquares[Color.WHITE.idx()],
+                kingSquares[Color.BLACK.idx()],
+                square,
+                piece,
+                false
+            )
+        }
+
+        if (removedPieces != null) {
+            for ((piece, square) in removedPieces) {
                 updateAccWithFeature(
                     kingSquares[Color.WHITE.idx()],
                     kingSquares[Color.BLACK.idx()],
                     square,
                     piece,
-                    false
+                    true
                 )
-            //}
-        }
-
-        if (removedPieces != null) {
-            for ((piece, square) in removedPieces) {
-                //if (piece.type() != PieceType.KING) {
-                    updateAccWithFeature(
-                        kingSquares[Color.WHITE.idx()],
-                        kingSquares[Color.BLACK.idx()],
-                        square,
-                        piece,
-                        true
-                    )
-                //}
             }
         }
     }

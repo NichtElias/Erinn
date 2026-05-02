@@ -8,8 +8,8 @@ import kotlin.math.min
 
 object NNUE {
 
-    const val FEATURE_NUM = 6 * 64 * 2
-    const val ACC_HALF_SIZE = 256
+    const val FEATURE_NUM = 6 * 2 * 64 * 64
+    const val ACC_HALF_SIZE = 32
     const val PSQT_BUCKETS = 8
     const val ACC_HALF_WITH_PSQT_SIZE = ACC_HALF_SIZE + PSQT_BUCKETS
 
