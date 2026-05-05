@@ -395,14 +395,14 @@ class Engine {
 
         val secondMove = moveGen.nextMove()
 
-        val result = iterDeep(Limits(searchDepth))
-
         moveGen.begin(genQuiets = false, inCheck = inCheck)
 
         var wrotePos = 0
 
         // check for quietness
         if (moveGen.nextMove() == null && !inCheck) {
+            val result = iterDeep(Limits(searchDepth))
+
             val binPos =
                 position.toBinaryPosition(scoreToWdl(if (position.turn == Color.WHITE) result.score else -result.score))
 
@@ -411,7 +411,7 @@ class Engine {
         }
 
         // play some "random" move some of the time so not every game is the same
-        val move = if (secondMove != null && rng.nextFloat() < 0.1) secondMove else result.move
+        val move = if (secondMove != null && rng.nextFloat() < 0.2) secondMove else iterDeep(Limits(1)).move
 
         val stateInfo = position.doMove(move)
 
