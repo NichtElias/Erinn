@@ -22,7 +22,8 @@ object NNUE {
     const val Q_SCALE_OTHER = 2048
 
     fun load() {
-        val bytes = Files.readAllBytes(Paths.get("model.bin"))
+
+        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_halfKA_32_v2.bin")?.readAllBytes()
         val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
 
         buffer.get(ftBiases)
