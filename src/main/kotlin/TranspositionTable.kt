@@ -2,19 +2,18 @@ package party.elias
 
 import kotlin.random.Random
 
-class TranspositionTable(capacityExponent: Int) {
+class TranspositionTable(capacity: Int) {
 
-    val indexMask: Long = (1L shl capacityExponent) - 1
-    val entries: Array<Entry?> = Array(1 shl capacityExponent) { null }
+    val entries: Array<Entry?> = Array(capacity) { null }
 
     fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move? = null) {
         val entry = Entry(key, draft, adjustScore(score, perspective, plyFromRoot), boundType, (bestMove ?: Move.NULL_MOVE).toCompact())
 
-        entries[(key and indexMask).toInt()] = entry
+        entries[(key.toULong() % entries.size.toUInt()).toInt()] = entry
     }
 
     fun get(key: Long): Entry? {
-        val entry = entries[(key and indexMask).toInt()]
+        val entry = entries[(key.toULong() % entries.size.toUInt()).toInt()]
         if (entry?.key == key)
             return entry
         return null

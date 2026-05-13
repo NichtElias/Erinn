@@ -22,7 +22,7 @@ class Engine {
 
     var moveGens: Array<MoveGen> = Array(MAX_SEARCH_PLY) { MoveGen(position, this) }
 
-    var tt: TranspositionTable = TranspositionTable(22)
+    var tt: TranspositionTable = TranspositionTable(256 * (1 shl 20) / TranspositionTable.ENTRY_SIZE)
 
     @Volatile
     var stop: Boolean = false
@@ -462,7 +462,7 @@ class Engine {
     }
 
     fun setHashTableSize(sizeInMiB: Int) {
-        tt = TranspositionTable(log2((sizeInMiB * (1 shl 20)).toFloat() / TranspositionTable.ENTRY_SIZE).toInt())
+        tt = TranspositionTable(sizeInMiB * (1 shl 20) / TranspositionTable.ENTRY_SIZE)
     }
 
     fun makeRandomMoves(rng: Random, minMoves: Int, maxMoves: Int) {
