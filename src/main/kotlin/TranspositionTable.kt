@@ -20,8 +20,8 @@ class TranspositionTable(capacity: Int) {
     }
 
     fun clear() {
-        for (i in 0..<entries.size) {
-            entries[i] = null;
+        for (i in entries.indices) {
+            entries[i] = null
         }
     }
 
@@ -79,15 +79,15 @@ class TranspositionTable(capacity: Int) {
 
             HASH_BLACK_TURN = rng.nextLong()
 
-            for (i in 0..<HASH_PIECES.size) {
+            for (i in HASH_PIECES.indices) {
                 HASH_PIECES[i] = rng.nextLong()
             }
 
-            for (i in 0..<HASH_CASTLING.size) {
+            for (i in HASH_CASTLING.indices) {
                 HASH_CASTLING[i] = rng.nextLong()
             }
 
-            for (i in 0..<HASH_EP_FILE.size) {
+            for (i in HASH_EP_FILE.indices) {
                 HASH_EP_FILE[i] = rng.nextLong()
             }
         }

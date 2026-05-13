@@ -170,7 +170,6 @@ class Board {
     fun undoMove(move: Move, stateInfo: StateInfo) {
         val movedPiece = pieces[move.dst.value]
         val movedColor = movedPiece.color()
-        val movedType = movedPiece.type()
 
         val placedPieces = ArrayList<Pair<Piece, Square>>(2)
         val removedPieces = ArrayList<Pair<Piece, Square>>(2)
@@ -323,9 +322,6 @@ class Board {
     }
 
     fun see(captureMove: Move): Score {
-
-        val SEE_MATERIAL_VALUES = intArrayOf(100, 300, 300, 500, 900, 20000)
-
         val firstVictim = captureMove.capture
         var attacker = pieces[captureMove.src.value]
 
@@ -808,6 +804,8 @@ class Board {
 
     companion object {
         private val BINARY_POSITION_EMPTY_MARKERS = intArrayOf(0b0101, 0b0110, 0b0111, 0b1101, 0b1110, 0b1111)
+
+        val SEE_MATERIAL_VALUES = intArrayOf(100, 300, 300, 500, 900, 20000)
 
         fun fromFen(fen: String): Board {
             val board = Board()

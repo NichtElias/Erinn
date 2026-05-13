@@ -12,21 +12,18 @@ import party.elias.Limits
 import party.elias.Move
 import party.elias.NNUE
 import party.elias.Score
-import party.elias.TranspositionTable
 import java.io.File
 import kotlin.collections.isEmpty
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sign
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
 val searchScope = CoroutineScope(Dispatchers.Default + Job())
 
-suspend fun run() {
+fun run() {
 
     val engine = Engine()
 
@@ -148,7 +145,7 @@ suspend fun run() {
                 val ourTime = if (engine.position.turn == Color.BLACK) bTime else wTime
                 val ourInc = if (engine.position.turn == Color.BLACK) bInc else wInc
 
-                var limits = if (moveTime != -1) {
+                val limits = if (moveTime != -1) {
                     Limits(depthLimit, moveTime.milliseconds, moveTime.milliseconds)
                 } else if (ourTime != -1) {
                     val softLimit = ourTime / 30 + ourInc / 2

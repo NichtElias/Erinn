@@ -192,12 +192,12 @@ class MoveGen(val position: Board, val engine: Engine) {
                     // generate pawn non-capture non-promotion moves
                     Bitboards.forAllSquares(position.piecesBB[PieceType.PAWN.idx()] and position.colorsBB[position.turn.idx()]
                             and Bitboards.PAWN_NON_PROMOTION_AREAS[position.turn.idx()]) { src ->
-                        val front = Square(src.value + MoveGen.PAWN_DIRECTIONS[position.turn.idx()])
+                        val front = Square(src.value + PAWN_DIRECTIONS[position.turn.idx()])
                         if (position.pieces[front.value] == Piece.NONE) {
                             val singlePushMove = Move(src, front, Piece.NONE)
 
                             // generate double push
-                            val doublePushSquare = Square(src.value + 2 * MoveGen.PAWN_DIRECTIONS[position.turn.idx()])
+                            val doublePushSquare = Square(src.value + 2 * PAWN_DIRECTIONS[position.turn.idx()])
                             if (src.rank == position.turn.pawnStartingRank() && position.pieces[doublePushSquare.value] == Piece.NONE) {
                                 val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
                                 if (!position.putsCurrentPlayerInCheck(doublePushMove)) {

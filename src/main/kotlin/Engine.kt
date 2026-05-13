@@ -5,7 +5,6 @@ import java.io.File
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.exp
-import kotlin.math.log2
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -47,8 +46,6 @@ class Engine {
             NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack, pieceCount)
         else
             NNUE.evaluate(position.nnueAccBlack, position.nnueAccWhite, pieceCount)
-
-        //return Eval.evaluate(position, Eval.EVAL_PARAMETERS) * position.turn.scoreFactor()
     }
 
     fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score): Score {
@@ -324,21 +321,21 @@ class Engine {
     }
 
     fun resetKillers() {
-        for (ply in 0..<killers.size) {
-            killers[ply][0] = Move.NULL_MOVE
-            killers[ply][1] = Move.NULL_MOVE
+        for (killerPair in killers) {
+            killerPair[0] = Move.NULL_MOVE
+            killerPair[1] = Move.NULL_MOVE
         }
     }
 
     fun ageHistory() {
-        for (i in 0..<historyCuts.size) {
+        for (i in historyCuts.indices) {
             historyCuts[i] /= 4
             historyTotal[i] /= 4
         }
     }
 
     fun resetHistory() {
-        for (i in 0..<historyCuts.size) {
+        for (i in historyCuts.indices) {
             historyCuts[i] = 0F
             historyTotal[i] = 0F
         }
