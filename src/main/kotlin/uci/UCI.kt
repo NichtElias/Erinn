@@ -163,7 +163,7 @@ fun run() {
 
                 searchScope.launch {
                     val (move, score) = engine.iterDeep(limits)
-                    println("bestmove ${move.toUci()} $score")
+                    println("bestmove ${move.toUci()}")
 
                     searchTimer.cancel()
                 }
