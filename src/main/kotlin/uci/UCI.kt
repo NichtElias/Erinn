@@ -232,16 +232,16 @@ fun scoreString(score: Score): String {
     }
 }
 
-fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, pv: ArrayList<Move>) {
+fun sendUciInfo(depth: Int, time: Duration, nodes: Long, score: Score, pv: ArrayList<Move>, ttFullPerMill: Int) {
     val nps = nodes * 1000 / max(time.toInt(DurationUnit.MILLISECONDS), 1)
     val scoreStr = scoreString(score)
     if (pv.isEmpty()) {
-        println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes score $scoreStr nps $nps")
+        println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes score $scoreStr nps $nps hashfull $ttFullPerMill")
     } else {
         var pvStr = ""
         for (move in pv) {
             pvStr += " ${move.toUci()}"
         }
-        println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes pv$pvStr score $scoreStr nps $nps")
+        println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes score $scoreStr nps $nps hashfull $ttFullPerMill pv$pvStr")
     }
 }

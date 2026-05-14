@@ -25,6 +25,20 @@ class TranspositionTable(capacity: Int) {
         }
     }
 
+    fun fullPerMill(): Int {
+        // checks 1000 equally spaced slots for an estimate of fullness
+
+        // will always report 0 if entries.size is < 1000, but we can live with that
+        val stride = entries.size / 1000
+
+        var occupiedSlots = 0
+        for (i in 0..<1000) {
+            if (entries[i * stride] != null) occupiedSlots++
+        }
+
+        return occupiedSlots
+    }
+
     companion object {
         const val ENTRY_SIZE = (4 // reference to entry in array (reference)
                 + 16 // object header
