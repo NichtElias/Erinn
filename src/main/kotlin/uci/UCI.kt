@@ -27,6 +27,8 @@ fun run() {
 
     val engine = Engine()
 
+    var moveTimeBuffer = 20
+
     var nnueInitialized = false
 
     var running = true
@@ -43,6 +45,7 @@ fun run() {
             println("id name schachn")
             println("id author NichtElias")
             println("option name Hash type spin default 256 min 1 max 8192")
+            println("option name MoveTimeBuffer type spin default 20 min 0 max 1000")
             println("uciok")
 
         } else if (cmd[0] == "setoption") {
@@ -56,6 +59,9 @@ fun run() {
                     when (name) {
                         "Hash" -> {
                             engine.setHashTableSize(value.toInt())
+                        }
+                        "MoveTimeBuffer" -> {
+                            moveTimeBuffer = value.toInt()
                         }
                     }
                 }
@@ -148,9 +154,9 @@ fun run() {
                 val limits = if (moveTime != -1) {
                     Limits(depthLimit, moveTime.milliseconds, moveTime.milliseconds)
                 } else if (ourTime != -1) {
-                    val softLimit = ourTime / 30 + ourInc / 2
-                    // -50 is because the gui doesn't immediately receive the bestmove once the search is stopped
-                    val hardLimit = min(ourTime - 50, softLimit * 3)
+                    val softLimit = ourTime / 35 + ourInc / 2
+                    // - moveTimeBuffer is because the gui doesn't immediately receive the bestmove once the search is stopped
+                    val hardLimit = max(ourTime - moveTimeBuffer, 0)
                     Limits(depthLimit, min(softLimit, hardLimit).milliseconds, hardLimit.milliseconds)
                 } else {
                     Limits(depthLimit)
