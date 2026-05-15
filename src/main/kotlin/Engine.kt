@@ -222,6 +222,10 @@ class Engine {
 
             if (result.aborted) return Result.ABORT
 
+            if (plyFromRoot == 0 && moveCount == 1 && score <= alpha) {
+                return Result(move, score)
+            }
+
             if (score > bestScore) {
                 if (debugMode && moveCount > 1) {
                     firstMoveWasBestMove = false
@@ -317,9 +321,32 @@ class Engine {
         resetSearchStats()
 
         for (d in 1..limits.depth) {
-            val result = search(0, d, limits)
+            var delta = 15
+            var windowAlpha = deepestResult.score - delta
+            var windowBeta = deepestResult.score + delta
 
-            if (result.aborted) return deepestResult
+            var result: Result
+
+            while (true) {
+                result = search(0, d, limits, windowAlpha, windowBeta)
+
+                if (result.aborted) return deepestResult
+
+                if (result.score <= windowAlpha) {
+                    // fail-low
+                    windowAlpha -= delta
+                    delta += delta
+                    continue
+                }
+                if (result.score >= windowBeta) {
+                    // fail-high
+                    windowBeta += delta
+                    delta += delta
+                    continue
+                }
+
+                break
+            }
 
             deepestResult = result
 
