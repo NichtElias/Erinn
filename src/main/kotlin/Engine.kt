@@ -40,6 +40,15 @@ class Engine {
 
     var printInfo: Boolean = true
 
+    var debugMode: Boolean = false
+
+    var totalTTHits: Long = 0
+    var totalSearchedNodes: Long = 0
+    var ttBestMoveCount: Long = 0
+    var captureBestMoveCount: Long = 0 // capture but not tt move
+    var killerBestMoveCount: Long = 0
+    var otherBestMoveCount: Long = 0
+
     fun evaluate(): Score {
         val pieceCount = position.occupiedBB.countOneBits()
         return if (position.turn == Color.WHITE)
@@ -156,6 +165,9 @@ class Engine {
         var moveCount = 0
         var prunedMoves = 0
 
+        var firstMoveWasBestMove = true
+        var firstIsKiller = false
+
         var alphaRaised = false
 
         val moveGen = moveGens[plyFromRoot]
@@ -164,6 +176,10 @@ class Engine {
         while (true) {
             val move = moveGen.nextMove() ?: break
             moveCount++
+
+            if (debugMode && moveCount == 1 && (move == killers[plyFromRoot][0] || move == killers[plyFromRoot][1])) {
+                firstIsKiller = true
+            }
 
             val putsInCheck = position.putsOpponentInCheck(move)
 
@@ -207,6 +223,10 @@ class Engine {
             if (result.aborted) return Result.ABORT
 
             if (score > bestScore) {
+                if (debugMode && moveCount > 1) {
+                    firstMoveWasBestMove = false
+                }
+
                 bestScore = score
                 bestMove = move
                 if (score > alpha) {
@@ -234,6 +254,8 @@ class Engine {
                     historyCuts[historyIndex] += remainingDepth + 1
                 }
 
+                collectSearchStats(ttEntry, firstMoveWasBestMove, bestMove, firstIsKiller)
+
                 tt.store(position.zobristHash, remainingDepth, position.turn,
                     plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move)
                 return Result(bestMove, bestScore)
@@ -249,6 +271,8 @@ class Engine {
 
         // we need to return something that isn't a checkmate score if we didn't actually search any moves
         if (moveCount - prunedMoves == 0) return Result(Move.NULL_MOVE, alpha)
+
+        collectSearchStats(ttEntry, firstMoveWasBestMove, bestMove, firstIsKiller)
 
         if (alphaRaised) { // PV node
             tt.store(position.zobristHash, remainingDepth, position.turn,
@@ -290,6 +314,8 @@ class Engine {
         nodesSearched = 0
         stop = false
 
+        resetSearchStats()
+
         for (d in 1..limits.depth) {
             val result = search(0, d, limits)
 
@@ -306,7 +332,45 @@ class Engine {
             }
         }
 
+        if (debugMode) {
+            print("info string first move hits: tt ${ttBestMoveCount.toFloat() / totalSearchedNodes * 100}%/${totalTTHits.toFloat() / totalSearchedNodes * 100}%, ")
+            print("capture ${captureBestMoveCount.toFloat() / totalSearchedNodes * 100}%, ")
+            print("killer ${killerBestMoveCount.toFloat() / totalSearchedNodes * 100}%, ")
+            println("other ${otherBestMoveCount.toFloat() / totalSearchedNodes * 100}%")
+        }
+
         return deepestResult
+    }
+
+    private fun collectSearchStats(
+        ttEntry: TranspositionTable.Entry?,
+        firstMoveWasBestMove: Boolean,
+        bestMove: Move,
+        firstIsKiller: Boolean
+    ) {
+        if (debugMode) {
+            totalSearchedNodes++
+            if (ttEntry != null) totalTTHits++
+            if (firstMoveWasBestMove) {
+                if (ttEntry != null && ttEntry.bestMove == bestMove.toCompact()) {
+                    ttBestMoveCount++
+                } else if (bestMove.capture != Piece.NONE) {
+                    captureBestMoveCount++
+                } else if (firstIsKiller) {
+                    killerBestMoveCount++
+                } else {
+                    otherBestMoveCount++
+                }
+            }
+        }
+    }
+
+    private fun resetSearchStats() {
+        totalSearchedNodes = 0
+        ttBestMoveCount = 0
+        captureBestMoveCount = 0
+        killerBestMoveCount = 0
+        otherBestMoveCount = 0
     }
 
     fun putKiller(move: Move, plyFromRoot: Int) {

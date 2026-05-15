@@ -46,6 +46,7 @@ fun run() {
             println("id author NichtElias")
             println("option name Hash type spin default 256 min 1 max 8192")
             println("option name MoveTimeBuffer type spin default 20 min 0 max 1000")
+            println("option name Debug type check default false")
             println("uciok")
 
         } else if (cmd[0] == "setoption") {
@@ -62,6 +63,9 @@ fun run() {
                         }
                         "MoveTimeBuffer" -> {
                             moveTimeBuffer = value.toInt()
+                        }
+                        "Debug" -> {
+                            engine.debugMode = (value == "true")
                         }
                     }
                 }
