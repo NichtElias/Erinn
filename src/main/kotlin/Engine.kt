@@ -209,12 +209,12 @@ class Engine {
             var score: Score
 
             pvLength[plyFromRoot + 1] = 0
-            result = pvs(alphaRaised, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
+            result = pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
             score = -result.score
 
             if (reduction > 0 && score > alpha) {
                 reduction = 0
-                result = pvs(alphaRaised, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
+                result = pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
                 score = -result.score
             }
 
@@ -286,7 +286,7 @@ class Engine {
     }
 
     private fun pvs(
-        alphaRaised: Boolean,
+        moveCount: Int,
         plyFromRoot: Int,
         remainingDepth: Int,
         reduction: Int,
@@ -296,7 +296,7 @@ class Engine {
         isPV: Boolean,
     ): Result {
         var result: Result
-        if (!alphaRaised) {
+        if (moveCount == 1) {
             result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, isPV)
         } else {
             result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -alpha - 1, -alpha, false)
