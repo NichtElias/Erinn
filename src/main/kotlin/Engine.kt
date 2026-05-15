@@ -255,7 +255,7 @@ class Engine {
                 plyFromRoot, bestScore, TranspositionTable.BoundType.EXACT, bestMove)
         } else { // all node
             tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BoundType.UPPER)
+                plyFromRoot, bestScore, TranspositionTable.BoundType.UPPER, bestMove)
         }
 
         return Result(bestMove, bestScore)
