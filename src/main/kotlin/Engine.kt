@@ -276,7 +276,7 @@ class Engine {
             result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, isPV)
         } else {
             result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -alpha - 1, -alpha, false)
-            if (-result.score > alpha && !result.aborted) {
+            if (-result.score > alpha && -result.score < beta && !result.aborted) {
                 result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, true)
             }
         }
