@@ -8,6 +8,7 @@ value class Square(val value: Int) {
     val rank: Int get() = value ushr 3
     val file: Int get() = value and 7
     val mirror: Square get() = Square(value xor 0b111000)
+    val parity: Int get() = (rank + file) % 2 // 0 means dark square, 1 means light square
 
     fun bb(): Bitboard {
         return 1L shl value

@@ -104,16 +104,20 @@ class Board {
         }
 
         // set ep square
+        epSquare = Square(-1)
         if (movingType == PieceType.PAWN
             && (move.src.bb() and (Bitboards.RANK_2 or Bitboards.RANK_7)) != 0L // from 2nd or 7th rank
             && (move.dst.bb() and (Bitboards.RANK_4 or Bitboards.RANK_5)) != 0L
         ) {
-            epSquare = move.src.enPassantActualCapture() // enPassantActualCapture not used for intended purpose here
+            val candidateEpSquare = move.src.enPassantActualCapture() // enPassantActualCapture not used for intended purpose here
 
-            // update hash with new ep file
-            zobristHash = zobristHash xor TranspositionTable.HASH_EP_FILE[epSquare.file]
-        } else {
-            epSquare = Square(-1)
+            // check if ep is actually possible (barring pins, that would be too hard to check) for better FIDE compliance
+            if (Bitboards.EN_PASSANT_CAPTURER_SQUARES[candidateEpSquare.value] and piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.opponent().idx()] != 0L) {
+                epSquare = candidateEpSquare
+
+                // update hash with new ep file
+                zobristHash = zobristHash xor TranspositionTable.HASH_EP_FILE[epSquare.file]
+            }
         }
 
         // special cases for the king
@@ -318,6 +322,22 @@ class Board {
                 }
             }
         }
+        return false
+    }
+
+    fun isDrawByInsufficientMaterial(): Boolean {
+        if (piecesBB[PieceType.PAWN.idx()] == 0L && piecesBB[PieceType.QUEEN.idx()] == 0L && piecesBB[PieceType.ROOK.idx()] == 0L) {
+            if (piecesBB[PieceType.KNIGHT.idx()].countOneBits() + piecesBB[PieceType.BISHOP.idx()].countOneBits() <= 1) {
+                return true
+            }
+
+            val ourBishops = piecesBB[PieceType.BISHOP.idx()] and colorsBB[turn.idx()]
+            val opponentBishops = piecesBB[PieceType.BISHOP.idx()] and colorsBB[turn.opponent().idx()]
+
+            return (piecesBB[PieceType.KNIGHT.idx()] == 0L && ourBishops.countOneBits() == 1 && opponentBishops.countOneBits() == 1
+                    && Square(ourBishops.countTrailingZeroBits()).parity == Square(opponentBishops.countTrailingZeroBits()).parity)
+        }
+
         return false
     }
 

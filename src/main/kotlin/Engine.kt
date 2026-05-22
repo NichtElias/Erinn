@@ -98,7 +98,7 @@ class Engine {
             }
         }
 
-        if (position.isDrawByRepetition()) return Result.draw()
+        if (position.isDrawByRepetition() || position.halfMoves >= 100 || position.isDrawByInsufficientMaterial()) return Result.draw()
 
         // probe transposition table
         val ttEntry = tt.get(position.zobristHash)

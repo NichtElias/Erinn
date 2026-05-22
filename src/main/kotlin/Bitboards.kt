@@ -211,6 +211,18 @@ object Bitboards {
         }
     }
 
+    val EN_PASSANT_CAPTURER_SQUARES: BitboardArray = BitboardArray(64)
+
+    init {
+        for (f in 0..7) {
+            var capturerFiles = 0L
+            if (f > 0) capturerFiles = capturerFiles or FILES[f - 1]
+            if (f < 7) capturerFiles = capturerFiles or FILES[f + 1]
+            EN_PASSANT_CAPTURER_SQUARES[2 * 8 + f] = capturerFiles and RANK_4
+            EN_PASSANT_CAPTURER_SQUARES[5 * 8 + f] = capturerFiles and RANK_5
+        }
+    }
+
     fun between(squareA: Square, squareB: Square): Bitboard {
         return LINE_SEGMENTS[squareA.value * 64 + squareB.value]
     }
