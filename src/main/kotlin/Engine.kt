@@ -60,16 +60,23 @@ class Engine {
 
     fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score): Score {
         var alpha = alpha
-        var bestScore = evaluate()
+        val staticEval = evaluate()
+        var bestScore = staticEval
 
         if (bestScore >= beta) return bestScore
         if (bestScore > alpha) alpha = bestScore
 
+        val inCheck = position.isColorInCheck(position.turn)
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin(genQuiets = false, inCheck = position.isColorInCheck(position.turn))
+        moveGen.begin(genQuiets = false, inCheck = inCheck)
 
         while (true) {
             val move = moveGen.nextMove() ?: break
+
+            // delta pruning
+            if (!inCheck && staticEval + PieceType.VALUES[move.capture.type().idx()] + 210 <= alpha) {
+                continue
+            }
 
             val stateInfo = position.doMove(move)
             val score = -qSearch(plyFromRoot + 1, -beta, -alpha)
