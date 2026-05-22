@@ -6,6 +6,7 @@ import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
@@ -362,7 +363,7 @@ class Engine {
             if (printInfo)
                 sendUciInfo(d, elapsed, nodesSearched, result.score, getPv(), tt.fullPerMill())
 
-            if (elapsed > limits.softTime) {
+            if (elapsed > limits.softTime || (abs(result.score) >= MIN_MATE_SCORE && MATE_SCORE - abs(result.score) < d)) {
                 return deepestResult
             }
         }
