@@ -493,7 +493,7 @@ class Engine {
 
         moveGen.begin(inCheck = inCheck)
         // test if game is over
-        if (moveGen.nextMove() == null || position.isDrawByRepetition() || position.halfMoves >= 50) {
+        if (moveGen.nextMove() == null || position.isDrawByRepetition() || position.halfMoves >= 100 || position.isDrawByInsufficientMaterial()) {
             return 0
         }
 
