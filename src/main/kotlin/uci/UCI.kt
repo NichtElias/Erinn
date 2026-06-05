@@ -42,7 +42,7 @@ fun run() {
 
         } else if (cmd[0] == "uci") {
 
-            println("id name schachn")
+            println("id name Erinn")
             println("id author NichtElias")
             println("option name Hash type spin default 256 min 1 max 8192")
             println("option name MoveTimeBuffer type spin default 20 min 0 max 1000")
