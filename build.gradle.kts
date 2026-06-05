@@ -80,7 +80,7 @@ tasks.register<FastChessBenchmarkTask>("fastchessBenchmark") {
     val shadowJarTask = tasks.named<ShadowJar>("shadowJar")
     builtJar.set(shadowJarTask.flatMap { it.archiveFile })
     projectRootDir.set(project.rootDir)
-    jarBaseName.set(project.name + "-" + project.version)
+    projectName.set(project.name)
     javaLauncher.set(project.extensions.getByType<JavaToolchainService>().launcherFor {
         languageVersion.set(java.toolchain.languageVersion)
     })
@@ -119,7 +119,7 @@ abstract class FastChessBenchmarkTask @Inject constructor(
     abstract val projectRootDir: DirectoryProperty
 
     @get:Internal
-    abstract val jarBaseName: Property<String>
+    abstract val projectName: Property<String>
 
     @get:Nested
     abstract val javaLauncher: Property<JavaLauncher>
@@ -139,8 +139,8 @@ abstract class FastChessBenchmarkTask @Inject constructor(
 
         val javaPath = javaLauncher.get().executablePath.asFile.absolutePath
         val testBenchPath = projectRootDir.get().asFile.toPath().resolve("testbench")
-        val featureJarName = "${jarBaseName.get()}-$id.jar"
-        val baseJarName = "${jarBaseName.get()}-$baseId.jar"
+        val featureJarName = "${projectName.get()}-$id.jar"
+        val baseJarName = "${projectName.get()}-$baseId.jar"
 
         fileSystemOperations.copy {
             from(builtJar.get().asFile)
