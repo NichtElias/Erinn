@@ -7,7 +7,7 @@ import kotlin.math.min
 object NNUE {
 
     const val FEATURE_NUM = 6 * 2 * 64 * 64
-    const val ACC_HALF_SIZE = 48
+    const val ACC_HALF_SIZE = 64
     const val PSQT_BUCKETS = 8
     const val ACC_HALF_WITH_PSQT_SIZE = ACC_HALF_SIZE + PSQT_BUCKETS
 
@@ -21,7 +21,7 @@ object NNUE {
 
     fun load() {
 
-        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_halfKA_48_v5.bin")?.readAllBytes()
+        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_halfKA_64_v6.bin")?.readAllBytes()
         val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
 
         buffer.get(ftBiases)
