@@ -133,8 +133,11 @@ class Engine {
         if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(plyFromRoot, alpha, beta))
 
         // reverse futility pruning
+        var staticEval: Score = 0
+        var hasStaticEval = false
         if (!isPV && !inCheck && remainingDepth < 6) {
-            val staticEval: Score = evaluate()
+            staticEval = evaluate()
+            hasStaticEval = true
             if (staticEval >= beta + 150 * remainingDepth) {
                 return Result(Move.NULL_MOVE, staticEval)
             }
@@ -172,7 +175,7 @@ class Engine {
                 && !isPV
                 && !inCheck
                 && abs(alpha) < 9000
-                && evaluate() + FUTILITY_MARGINS[remainingDepth] <= alpha)
+                && (if (hasStaticEval) staticEval else evaluate()) + FUTILITY_MARGINS[remainingDepth] <= alpha)
 
         var alpha = alpha
 
