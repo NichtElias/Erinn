@@ -55,4 +55,18 @@ object NNUE {
 
         return (outOut + psqtValue) / Q_SCALE_OTHER * 512 / Q_SCALE_ACTIVATION
     }
+
+    fun whiteFeature(piece: Piece, square: Square, kingSquare: Square): Int {
+        return (piece.type().idx() * 2 * 64 * 64
+                + (if (piece.color() == Color.WHITE) 0 else 1) * 64 * 64
+                + kingSquare.value * 64
+                + square.value)
+    }
+
+    fun blackFeature(piece: Piece, square: Square, kingSquare: Square): Int {
+        return (piece.type().idx() * 2 * 64 * 64
+                + (if (piece.color() == Color.BLACK) 0 else 1) * 64 * 64
+                + kingSquare.mirror.value * 64
+                + square.mirror.value)
+    }
 }

@@ -19,16 +19,13 @@ class Board {
     var posHistoryStart: Int = 0 // when loading from fen string, we can't know the previous positions, so anything before this index is invalid
     val kingProtectors: BitboardArray = BitboardArray(2) // pieces preventing the kings from being in check from sliding pieces
 
-    val nnueAccWhite: IntArray = IntArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
-    val nnueAccBlack: IntArray = IntArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
-
     // just a reusable array for SEE, doesn't get affected by doMove/undoMove
     val seeGain: IntArray = IntArray(32)
 
     val occupiedBB: Bitboard get() = colorsBB[0] or colorsBB[1]
     val ply: Int get() = (fullMoves - 1) * 2 + if (turn == Color.BLACK) 1 else 0 // for indexing positionHistory and the like
 
-    fun place(piece: Piece, square: Square, placedPieces: ArrayList<Pair<Piece, Square>>) {
+    fun place(piece: Piece, square: Square) {
         val pieceIdx = piece.type().idx()
         val colorIdx = piece.color().idx()
         piecesBB[pieceIdx] = piecesBB[pieceIdx] or square.bb()
@@ -40,11 +37,10 @@ class Board {
         pieces[square.value] = piece
 
         zobristHash = zobristHash xor TranspositionTable.pieceHash(piece, square)
-        placedPieces.add(Pair(piece, square))
     }
 
     // remove piece on square, either because it moved elsewhere or it was captured
-    fun remove(square: Square, removedPieces: ArrayList<Pair<Piece, Square>>) {
+    fun remove(square: Square) {
         val piece = pieces[square.value]
         val pieceIdx = piece.type().idx()
         val colorIdx = piece.color().idx()
@@ -54,7 +50,6 @@ class Board {
         pieces[square.value] = Piece.NONE
 
         zobristHash = zobristHash xor TranspositionTable.pieceHash(piece, square)
-        removedPieces.add(Pair(piece, square))
     }
 
     fun doMove(move: Move): StateInfo {
@@ -64,17 +59,12 @@ class Board {
             epSquare,
             halfMoves,
             zobristHash,
-            kingProtectors.clone(),
-            nnueAccWhite.clone(),
-            nnueAccBlack.clone()
+            kingProtectors.clone()
         )
 
         val movingPiece = pieces[move.src.value]
         val movingColor = movingPiece.color()
         val movingType = movingPiece.type()
-
-        val placedPieces = ArrayList<Pair<Piece, Square>>(2)
-        val removedPieces = ArrayList<Pair<Piece, Square>>(2)
 
         // remove current castling rights from hash
         zobristHash = zobristHash xor TranspositionTable.castlingHash(castlingRights)
@@ -91,7 +81,7 @@ class Board {
             }
 
             // remove captured piece
-            remove(capturedSquare, removedPieces)
+            remove(capturedSquare)
 
             halfMoves = 0
         }
@@ -127,8 +117,8 @@ class Board {
 
             // move rooks when castling
             if (move.castle != -1) {
-                place(Piece(movingColor, PieceType.ROOK), Square.CASTLING_ROOK_TARGET_SQUARES[move.castle], placedPieces)
-                remove(Square.CASTLING_ROOK_SQUARES[move.castle], removedPieces)
+                place(Piece(movingColor, PieceType.ROOK), Square.CASTLING_ROOK_TARGET_SQUARES[move.castle])
+                remove(Square.CASTLING_ROOK_SQUARES[move.castle])
             }
         }
 
@@ -136,14 +126,14 @@ class Board {
         castlingRights = castlingRights and move.src.bb().inv() and move.dst.bb().inv()
 
         // take piece from src square
-        remove(move.src, removedPieces)
+        remove(move.src)
 
         // put piece on dst square
         if (move.promotion == PieceType.NONE) {
-            place(movingPiece, move.dst, placedPieces)
+            place(movingPiece, move.dst)
         } else {
             // promote
-            place(Piece(movingColor, move.promotion), move.dst, placedPieces)
+            place(Piece(movingColor, move.promotion), move.dst)
         }
 
         // add new castling rights to hash
@@ -157,14 +147,6 @@ class Board {
         turn = turn.opponent()
         positionHistory[ply] = zobristHash
 
-        // update acc
-        if (movingType == PieceType.KING) {
-            resetAcc()
-            fillAccWithPresentFeatures()
-        } else {
-            updateAccWithFeatures(placedPieces, removedPieces)
-        }
-
         // calculate info related to being in check (currentKingProtectors)
         calcCheckInfo()
 
@@ -175,28 +157,25 @@ class Board {
         val movedPiece = pieces[move.dst.value]
         val movedColor = movedPiece.color()
 
-        val placedPieces = ArrayList<Pair<Piece, Square>>(2)
-        val removedPieces = ArrayList<Pair<Piece, Square>>(2)
-
         // bookkeeping
         turn = turn.opponent()
         fullMoves -= if (turn == Color.BLACK) 1 else 0
 
         // put piece back on src square
         if (move.promotion == PieceType.NONE) {
-            place(movedPiece, move.src, placedPieces)
+            place(movedPiece, move.src)
         } else {
             // un-promote
-            place(Piece(movedColor, PieceType.PAWN), move.src, placedPieces)
+            place(Piece(movedColor, PieceType.PAWN), move.src)
         }
 
         // remove piece from dst square
-        remove(move.dst, removedPieces)
+        remove(move.dst)
 
         // revert castling rook movement
         if (move.castle != -1) {
-            place(Piece(movedColor, PieceType.ROOK), Square.CASTLING_ROOK_SQUARES[move.castle], placedPieces)
-            remove(Square.CASTLING_ROOK_TARGET_SQUARES[move.castle], removedPieces)
+            place(Piece(movedColor, PieceType.ROOK), Square.CASTLING_ROOK_SQUARES[move.castle])
+            remove(Square.CASTLING_ROOK_TARGET_SQUARES[move.castle])
         }
 
         // capture
@@ -208,7 +187,7 @@ class Board {
             }
 
             // place captured piece back
-            place(move.capture, capturedSquare, placedPieces)
+            place(move.capture, capturedSquare)
         }
 
         // restore from StateInfo
@@ -218,10 +197,6 @@ class Board {
         zobristHash = stateInfo.zobristHash
         kingProtectors[0] = stateInfo.kingProtectors[0]
         kingProtectors[1] = stateInfo.kingProtectors[1]
-
-        // restore nnue accumulators
-        System.arraycopy(stateInfo.nnueAccWhite, 0, nnueAccWhite, 0, nnueAccWhite.size)
-        System.arraycopy(stateInfo.nnueAccBlack, 0, nnueAccBlack, 0, nnueAccBlack.size)
     }
 
     fun doNullMove(): StateInfo {
@@ -230,9 +205,7 @@ class Board {
             epSquare,
             halfMoves,
             zobristHash,
-            kingProtectors,
-            nnueAccWhite.clone(),
-            nnueAccBlack.clone()
+            kingProtectors
         ) // save some info for undoing the move
 
         // increment half moves
@@ -619,73 +592,6 @@ class Board {
         return isPseudoLegalMove(move) && !naiveIsInCheckAfter(move)
     }
 
-    fun resetAcc() {
-        for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
-            nnueAccWhite[i] = NNUE.ftBiases[i]
-            nnueAccBlack[i] = NNUE.ftBiases[i]
-        }
-    }
-
-    fun fillAccWithPresentFeatures() {
-        val placedPieces = ArrayList<Pair<Piece, Square>>()
-        for (sq in 0..63) {
-            if (pieces[sq].type() != PieceType.NONE) {
-                placedPieces.add(Pair(pieces[sq], Square(sq)))
-            }
-        }
-        updateAccWithFeatures(placedPieces)
-    }
-
-    fun updateAccWithFeature(whiteKingSquare: Square, blackKingSquare: Square, square: Square, piece: Piece, remove: Boolean) {
-        val whiteFeatureIdx = (piece.type().idx() * 2 * 64 * 64
-                + (if (piece.color() == Color.WHITE) 0 else 1) * 64 * 64
-                + whiteKingSquare.value * 64
-                + square.value)
-        val blackFeatureIdx = (piece.type().idx() * 2 * 64 * 64
-                + (if (piece.color() == Color.BLACK) 0 else 1) * 64 * 64
-                + blackKingSquare.mirror.value * 64
-                + square.mirror.value)
-
-        val whiteFeatureWeights = NNUE.ftWeights[whiteFeatureIdx]
-        val blackFeatureWeights = NNUE.ftWeights[blackFeatureIdx]
-        if (remove) {
-            for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
-                nnueAccWhite[i] -= whiteFeatureWeights[i]
-                nnueAccBlack[i] -= blackFeatureWeights[i]
-            }
-        } else {
-            for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
-                nnueAccWhite[i] += whiteFeatureWeights[i]
-                nnueAccBlack[i] += blackFeatureWeights[i]
-            }
-        }
-    }
-
-    fun updateAccWithFeatures(placedPieces: ArrayList<Pair<Piece, Square>>, removedPieces: ArrayList<Pair<Piece, Square>>? = null) {
-
-        for ((piece, square) in placedPieces) {
-            updateAccWithFeature(
-                kingSquares[Color.WHITE.idx()],
-                kingSquares[Color.BLACK.idx()],
-                square,
-                piece,
-                false
-            )
-        }
-
-        if (removedPieces != null) {
-            for ((piece, square) in removedPieces) {
-                updateAccWithFeature(
-                    kingSquares[Color.WHITE.idx()],
-                    kingSquares[Color.BLACK.idx()],
-                    square,
-                    piece,
-                    true
-                )
-            }
-        }
-    }
-
     override fun toString(): String {
         val b: StringBuilder = StringBuilder()
 
@@ -837,8 +743,6 @@ class Board {
 
             if (ranks.size != 8) throw IllegalArgumentException("invalid number of ranks in fen string '$fen'")
 
-            val placedPieces = ArrayList<Pair<Piece, Square>>()
-
             for (ri in 0..7) {
                 var fi = 0
 
@@ -846,7 +750,7 @@ class Board {
                     if (c in '1'..'8') {
                         fi += c - '0'
                     } else if (c in 'a'..'z' || c in 'A'..'Z') {
-                        board.place(Piece.fromSymbol(c), Square(ri, fi), placedPieces)
+                        board.place(Piece.fromSymbol(c), Square(ri, fi))
                         fi++
                     }
                 }
@@ -890,10 +794,6 @@ class Board {
             board.positionHistory[board.ply] = board.zobristHash
             board.posHistoryStart = board.ply
 
-            // setup nnue accumulator
-            board.resetAcc()
-            board.updateAccWithFeatures(placedPieces)
-
             // calculate info related to being in check (currentKingProtectors)
             board.calcCheckInfo()
 
@@ -910,8 +810,6 @@ class Board {
         val epSquare: Square,
         val halfMoves: Int,
         val zobristHash: Long,
-        val kingProtectors: BitboardArray,
-        val nnueAccWhite: IntArray,
-        val nnueAccBlack: IntArray
+        val kingProtectors: BitboardArray
     )
 }

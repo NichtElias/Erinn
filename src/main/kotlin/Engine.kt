@@ -6,7 +6,6 @@ import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
@@ -39,6 +38,8 @@ class Engine {
     val pvTable: CompactMoveArray = CompactMoveArray(MAX_SEARCH_PLY * MAX_SEARCH_PLY)
     val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
 
+    val accStack: AccumulatorStack = AccumulatorStack()
+
     var printInfo: Boolean = true
 
     var debugMode: Boolean = false
@@ -50,17 +51,34 @@ class Engine {
     var killerBestMoveCount: Long = 0
     var otherBestMoveCount: Long = 0
 
-    fun evaluate(): Score {
+    fun evaluate(plyFromRoot: Int): Score {
         val pieceCount = position.occupiedBB.countOneBits()
+        val accPair = accStack.stack[plyFromRoot]
+
+        accStack.updateAccAt(plyFromRoot)
+
         return if (position.turn == Color.WHITE)
-            NNUE.evaluate(position.nnueAccWhite, position.nnueAccBlack, pieceCount)
+            NNUE.evaluate(accPair.white.contents, accPair.black.contents, pieceCount)
         else
-            NNUE.evaluate(position.nnueAccBlack, position.nnueAccWhite, pieceCount)
+            NNUE.evaluate(accPair.black.contents, accPair.white.contents, pieceCount)
+    }
+
+    fun doMoveWithAccUpdate(plyFromRoot: Int, move: Move): Board.StateInfo {
+        val doFullRefresh = accStack.preDoMove(plyFromRoot, move, position)
+        val stateInfo = position.doMove(move)
+        accStack.postDoMove(plyFromRoot, position, doFullRefresh)
+
+        return stateInfo
+    }
+
+    fun doNullMoveWithAccUpdate(plyFromRoot: Int): Board.StateInfo {
+        accStack.preDoNullMove(plyFromRoot)
+        return position.doNullMove()
     }
 
     fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score): Score {
         var alpha = alpha
-        val staticEval = evaluate()
+        val staticEval = evaluate(plyFromRoot)
         var bestScore = staticEval
 
         if (bestScore >= beta) return bestScore
@@ -78,7 +96,7 @@ class Engine {
                 continue
             }
 
-            val stateInfo = position.doMove(move)
+            val stateInfo = doMoveWithAccUpdate(plyFromRoot, move)
             val score = -qSearch(plyFromRoot + 1, -beta, -alpha)
             position.undoMove(move, stateInfo)
 
@@ -136,7 +154,7 @@ class Engine {
         var staticEval: Score = 0
         var hasStaticEval = false
         if (!isPV && !inCheck && remainingDepth < 6) {
-            staticEval = evaluate()
+            staticEval = evaluate(plyFromRoot)
             hasStaticEval = true
             if (staticEval >= beta + 150 * remainingDepth) {
                 return Result(Move.NULL_MOVE, staticEval)
@@ -152,7 +170,7 @@ class Engine {
             var reduction = 2
             if (remainingDepth > 6) reduction = 3
 
-            val stateInfo = position.doNullMove()
+            val stateInfo = doNullMoveWithAccUpdate(plyFromRoot)
 
             val nullMoveResult = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -beta + 1, false)
             val nullMoveScore = -nullMoveResult.score
@@ -175,7 +193,7 @@ class Engine {
                 && !isPV
                 && !inCheck
                 && abs(alpha) < 9000
-                && (if (hasStaticEval) staticEval else evaluate()) + FUTILITY_MARGINS[remainingDepth] <= alpha)
+                && (if (hasStaticEval) staticEval else evaluate(plyFromRoot)) + FUTILITY_MARGINS[remainingDepth] <= alpha)
 
         var alpha = alpha
 
@@ -211,7 +229,7 @@ class Engine {
                 continue
             }
 
-            val stateInfo = position.doMove(move)
+            val stateInfo = doMoveWithAccUpdate(plyFromRoot, move)
 
             var reduction = 0
 
@@ -336,6 +354,8 @@ class Engine {
         searchStartTime = TimeSource.Monotonic.markNow()
         nodesSearched = 0
         stop = false
+
+        accStack.init(position)
 
         resetSearchStats()
 

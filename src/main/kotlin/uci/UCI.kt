@@ -198,7 +198,8 @@ fun run() {
 
         } else if (cmd[0] == "eval") {
             // println(scoreString(engine.qSearch(-Engine.MATE_SCORE, Engine.MATE_SCORE)))
-            println(scoreString(engine.evaluate()))
+            engine.accStack.init(engine.position)
+            println(scoreString(engine.evaluate(0)))
         } else if (cmd[0] == "genpos") {
 
             val depth = cmd[1].toInt()
