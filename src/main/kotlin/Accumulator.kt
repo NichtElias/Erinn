@@ -29,24 +29,13 @@ abstract class Accumulator {
     }
 
     fun applyDiff(parentAcc: Accumulator) {
-        val parentContents = parentAcc.contents
-
-        parentContents.copyInto(contents)
-
-        for (i in 0..<diff.subFeatureCount) {
-            val featureWeights = NNUE.ftWeights[diff.subFeatures[i]]
-
-            for (j in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
-                contents[j] -= featureWeights[j]
+        when (diff.addFeatureCount) {
+            0 -> if (diff.subFeatureCount == 0) copy(parentAcc)
+            1 -> when (diff.subFeatureCount) {
+                1 -> addSubDiff(parentAcc)
+                2 -> addSubSubDiff(parentAcc)
             }
-        }
-
-        for (i in 0..<diff.addFeatureCount) {
-            val featureWeights = NNUE.ftWeights[diff.addFeatures[i]]
-
-            for (j in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
-                contents[j] += featureWeights[j]
-            }
+            2 -> if (diff.subFeatureCount == 2) addAddSubSubDiff(parentAcc)
         }
 
         diff.reset()
@@ -62,6 +51,36 @@ abstract class Accumulator {
         for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
             contents[i] = fromContents[i] + addFeatureWeights[i] - subFeatureWeights[i]
         }
+    }
+
+    fun addSubSubDiff(from: Accumulator) {
+        val fromContents = from.contents
+
+        val addFeatureWeights = NNUE.ftWeights[diff.addFeatures[0]]
+        val sub0FeatureWeights = NNUE.ftWeights[diff.subFeatures[0]]
+        val sub1FeatureWeights = NNUE.ftWeights[diff.subFeatures[1]]
+
+        for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
+            contents[i] = fromContents[i] + addFeatureWeights[i] - sub0FeatureWeights[i] - sub1FeatureWeights[i]
+        }
+    }
+
+    fun addAddSubSubDiff(from: Accumulator) {
+        val fromContents = from.contents
+
+        val add0FeatureWeights = NNUE.ftWeights[diff.addFeatures[0]]
+        val add1FeatureWeights = NNUE.ftWeights[diff.addFeatures[1]]
+        val sub0FeatureWeights = NNUE.ftWeights[diff.subFeatures[0]]
+        val sub1FeatureWeights = NNUE.ftWeights[diff.subFeatures[1]]
+
+        for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
+            contents[i] = fromContents[i] + add0FeatureWeights[i] + add1FeatureWeights[i] - sub0FeatureWeights[i] - sub1FeatureWeights[i]
+        }
+    }
+
+    // required for null move
+    fun copy(from: Accumulator) {
+        from.contents.copyInto(contents)
     }
 
     abstract fun feature(piece: Piece, square: Square, kingSquare: Square): Int
