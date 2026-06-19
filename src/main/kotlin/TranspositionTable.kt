@@ -2,12 +2,14 @@ package party.elias
 
 import kotlin.random.Random
 
+typealias BoundType = Short
+
 class TranspositionTable(capacity: Int) {
 
     val entries: Array<Entry?> = Array(capacity) { null }
 
     fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move? = null) {
-        val entry = Entry(key, draft, adjustScore(score, perspective, plyFromRoot), boundType, (bestMove ?: Move.NULL_MOVE).toCompact())
+        val entry = Entry(key, draft.toShort(), adjustScore(score, perspective, plyFromRoot), boundType, (bestMove ?: Move.NULL_MOVE).toCompact())
 
         entries[(key.toULong() % entries.size.toUInt()).toInt()] = entry
     }
@@ -41,12 +43,17 @@ class TranspositionTable(capacity: Int) {
 
     companion object {
         const val ENTRY_SIZE = (4 // reference to entry in array (reference)
-                + 16 // object header
+                + 12 // object header
                 + 8 // key (long)
-                + 4 // draft (int)
+                + 2 // draft (short)
                 + 4 // score (int)
-                + 4 // bound type (reference)
-                + 4) // best move (int)
+                + 2 // bound type (short)
+                + 4 // best move (int)
+                + 0) // padding
+
+        const val BOUND_UPPER: Short = 0b01
+        const val BOUND_LOWER: Short = 0b10
+        const val BOUND_EXACT: Short = 0b11
 
         const val SEED = 84927659
 
@@ -107,13 +114,8 @@ class TranspositionTable(capacity: Int) {
         }
     }
 
-    enum class BoundType {
-        UPPER,
-        LOWER,
-        EXACT
-    }
 
-    data class Entry(val key: Long, val draft: Int, private val score: Score, val bound: BoundType, val bestMove: CompactMove) {
+    data class Entry(val key: Long, val draft: Short, private val score: Score, val bound: BoundType, val bestMove: CompactMove) {
         fun getAdjustedScore(perspective: Color, plyFromRoot: Int): Score {
             return adjustScore(score, perspective, -plyFromRoot)
         }

@@ -132,13 +132,13 @@ class Engine {
             if (ttEntry.draft >= remainingDepth) {
                 val adjustedScore = ttEntry.getAdjustedScore(position.turn, plyFromRoot)
                 when (ttEntry.bound) {
-                    TranspositionTable.BoundType.EXACT ->
+                    TranspositionTable.BOUND_EXACT ->
                         return Result(ttEntry.bestMove.toMove(), adjustedScore)
 
-                    TranspositionTable.BoundType.LOWER -> if (adjustedScore >= beta && !isPV)
+                    TranspositionTable.BOUND_LOWER -> if (adjustedScore >= beta && !isPV)
                         return Result(Move.NULL_MOVE, adjustedScore)
 
-                    TranspositionTable.BoundType.UPPER -> if (adjustedScore < alpha && !isPV)
+                    TranspositionTable.BOUND_UPPER -> if (adjustedScore < alpha && !isPV)
                         return Result(Move.NULL_MOVE, adjustedScore)
                 }
             }
@@ -298,7 +298,7 @@ class Engine {
                 collectSearchStats(ttEntry, firstMoveWasBestMove, bestMove, firstIsKiller)
 
                 tt.store(position.zobristHash, remainingDepth, position.turn,
-                    plyFromRoot, bestScore, TranspositionTable.BoundType.LOWER, move)
+                    plyFromRoot, bestScore, TranspositionTable.BOUND_LOWER, move)
                 return Result(bestMove, bestScore)
             }
         }
@@ -317,10 +317,10 @@ class Engine {
 
         if (alphaRaised) { // PV node
             tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BoundType.EXACT, bestMove)
+                plyFromRoot, bestScore, TranspositionTable.BOUND_EXACT, bestMove)
         } else { // all node
             tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BoundType.UPPER, bestMove)
+                plyFromRoot, bestScore, TranspositionTable.BOUND_UPPER, bestMove)
         }
 
         return Result(bestMove, bestScore)
