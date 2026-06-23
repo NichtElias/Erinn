@@ -660,8 +660,11 @@ class Board {
         return sb.toString()
     }
 
-    fun toBinaryPosition(wdl: Float): ByteArray {
-        val wdl16 = java.lang.Float.floatToFloat16(wdl)
+    fun toBinaryPosition(evalWdl: Float, resultWdl: Float): ByteArray {
+        val headerSize = 7
+
+        val evalWdl16 = java.lang.Float.floatToFloat16(evalWdl)
+        val resultWdl16 = java.lang.Float.floatToFloat16(resultWdl)
 
         val wKingSq = kingSquares[Color.WHITE.idx()]
         val bKingSq = kingSquares[Color.BLACK.idx()]
@@ -711,18 +714,21 @@ class Board {
             emptyCount = 0
         }
 
-        val binPos = ByteArray(5 + (nibbleCount + 1) / 2)
+        val binPos = ByteArray(headerSize + (nibbleCount + 1) / 2)
 
-        binPos[0] = ((wdl16.toInt() and 0xFFFF) ushr 8).toByte()
-        binPos[1] = (wdl16.toInt() and 0xFF).toByte()
+        binPos[0] = ((evalWdl16.toInt() and 0xFFFF) ushr 8).toByte()
+        binPos[1] = (evalWdl16.toInt() and 0xFF).toByte()
 
-        binPos[2] = ((turn.idx() shl 6) or wKingSq.value and 0x3F).toByte()
-        binPos[3] = (bKingSq.value and 0x3F).toByte()
+        binPos[2] = ((resultWdl16.toInt() and 0xFFFF) ushr 8).toByte()
+        binPos[3] = (resultWdl16.toInt() and 0xFF).toByte()
 
-        binPos[4] = nibbleCount.toByte()
+        binPos[4] = ((turn.idx() shl 6) or wKingSq.value and 0x3F).toByte()
+        binPos[5] = (bKingSq.value and 0x3F).toByte()
+
+        binPos[6] = nibbleCount.toByte()
 
         for (i in 0..<((nibbleCount + 1) / 2)) {
-            binPos[i + 5] = piecesBuffer[i].toByte()
+            binPos[i + headerSize] = piecesBuffer[i].toByte()
         }
 
         return binPos
