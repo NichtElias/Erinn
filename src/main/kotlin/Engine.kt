@@ -508,45 +508,52 @@ class Engine {
         return results
     }
 
-    fun genEvalPosFromSelfPlayGame(searchDepth: Int, file: File, rng: Random): Int {
+    fun genEvalPosFromSelfPlayGame(searchDepth: Int, file: File): Int {
 
-        val inCheck = position.isColorInCheck(position.turn)
+        val positions: ArrayList<ByteArray> = ArrayList()
+        var result: Float
 
-        val moveGen = MoveGen(position, this)
+        while (true) {
+            // test if game is draw
+            if (position.isDrawByRepetition() || position.halfMoves >= 100 || position.isDrawByInsufficientMaterial()) {
+                result = 0.5f
+                break
+            }
 
-        moveGen.begin(inCheck = inCheck)
-        // test if game is over
-        if (moveGen.nextMove() == null || position.isDrawByRepetition() || position.halfMoves >= 100 || position.isDrawByInsufficientMaterial()) {
-            return 0
+            val searchResult = iterDeep(Limits(searchDepth))
+
+            val inCheck = position.isColorInCheck(position.turn)
+
+            // search only returns null move when no moves are possible, so stalemate or checkmate
+            if (searchResult.move == Move.NULL_MOVE) {
+                result = if (inCheck) (if (position.turn == Color.WHITE) 0f else 1f) else 0.5f
+                break
+            }
+
+            // check for quietness
+            if (!inCheck && searchResult.move.capture == Piece.NONE) {
+                val binPos =
+                    position.toBinaryPosition(
+                        scoreToWdl(if (position.turn == Color.WHITE) searchResult.score else -searchResult.score),
+                        0f
+                    )
+
+                positions.add(binPos)
+            }
+
+            // make move
+            position.doMove(searchResult.move)
         }
 
-        val secondMove = moveGen.nextMove()
+        for (position in positions) {
+            val resultWdl16 = java.lang.Float.floatToFloat16(result)
+            position[2] = ((resultWdl16.toInt() and 0xFFFF) ushr 8).toByte()
+            position[3] = (resultWdl16.toInt() and 0xFF).toByte()
 
-        moveGen.begin(genQuiets = false, inCheck = inCheck)
-
-        var wrotePos = 0
-
-        // check for quietness
-        if (moveGen.nextMove() == null && !inCheck) {
-            val result = iterDeep(Limits(searchDepth))
-
-            val binPos =
-                position.toBinaryPosition(scoreToWdl(if (position.turn == Color.WHITE) result.score else -result.score))
-
-            file.appendBytes(binPos)
-            wrotePos = 1
+            file.appendBytes(position)
         }
 
-        // play some "random" move some of the time so not every game is the same
-        val move = if (secondMove != null && rng.nextFloat() < 0.2) secondMove else iterDeep(Limits(1)).move
-
-        val stateInfo = position.doMove(move)
-
-        val followingPositions = genEvalPosFromSelfPlayGame(searchDepth, file, rng)
-
-        position.undoMove(move, stateInfo)
-
-        return wrotePos + followingPositions
+        return positions.size
     }
 
     fun genEvalPosFromSelfPlayGames(seed: Int, searchDepth: Int, games: Int, file: File) {
@@ -562,9 +569,10 @@ class Engine {
         for (i in 0..<games) {
             tt.clear()
             position = Board.startPos()
-            makeRandomMoves(rng, 4, 12)
+            // amount of random moves played is 4 to 10 but heavily skewed to the higher end
+            makeRandomMoves(rng, rng.nextInt(rng.nextInt(4, 11), 11), 10)
 
-            positionsGenerated += genEvalPosFromSelfPlayGame(searchDepth, file, rng)
+            positionsGenerated += genEvalPosFromSelfPlayGame(searchDepth, file)
 
             val currentTimeStamp = TimeSource.Monotonic.markNow()
             if (currentTimeStamp - lastInfoPrint > 5.seconds) {
@@ -593,7 +601,7 @@ class Engine {
     }
 
     fun makeRandomMoves(rng: Random, minMoves: Int, maxMoves: Int) {
-        for (m in 0..rng.nextInt(minMoves, maxMoves)) {
+        for (m in 0..<rng.nextInt(minMoves, maxMoves + 1)) {
             val allMoves = ArrayList<Move>()
 
             // moveGens[0] used for all moves, as they're generated and made sequentially
