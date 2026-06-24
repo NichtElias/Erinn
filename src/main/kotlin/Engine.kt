@@ -569,7 +569,8 @@ class Engine {
         for (i in 0..<games) {
             tt.clear()
             position = Board.startPos()
-            makeRandomMoves(rng, 10, 10)
+            // amount of random moves played is 4 to 10 but heavily skewed to the higher end
+            makeRandomMoves(rng, rng.nextInt(rng.nextInt(4, 11), 11), 10)
 
             positionsGenerated += genEvalPosFromSelfPlayGame(searchDepth, file)
 
