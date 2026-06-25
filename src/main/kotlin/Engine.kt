@@ -156,7 +156,7 @@ class Engine {
         if (!isPV && !inCheck && remainingDepth < 6) {
             staticEval = evaluate(plyFromRoot)
             hasStaticEval = true
-            if (staticEval >= beta + 150 * remainingDepth) {
+            if (staticEval >= beta + 100 * remainingDepth) {
                 return Result(Move.NULL_MOVE, staticEval)
             }
         }
