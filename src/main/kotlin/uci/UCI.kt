@@ -160,7 +160,7 @@ fun run() {
                 } else if (ourTime != -1) {
                     val softLimit = ourTime / 35 + ourInc / 2
                     // - moveTimeBuffer is because the gui doesn't immediately receive the bestmove once the search is stopped
-                    val hardLimit = max(ourTime - moveTimeBuffer, 0)
+                    val hardLimit = max(ourTime * 70 / 100 - moveTimeBuffer, 0)
                     Limits(depthLimit, min(softLimit, hardLimit).milliseconds, hardLimit.milliseconds)
                 } else {
                     Limits(depthLimit)
