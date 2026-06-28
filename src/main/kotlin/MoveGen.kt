@@ -182,7 +182,7 @@ class MoveGen(val position: Board, val engine: Engine) {
 
                                     quietMoves.addWithScore(
                                         move.toCompact(),
-                                        if (engine.historyTotal[idx] == 0F) 0F else engine.historyCuts[idx] / engine.historyTotal[idx]
+                                        engine.historyTable[idx].toFloat()
                                     )
                                 }
                             }
@@ -205,7 +205,7 @@ class MoveGen(val position: Board, val engine: Engine) {
 
                                     quietMoves.addWithScore(
                                         doublePushMove.toCompact(),
-                                        if (engine.historyTotal[idx] == 0F) 0F else engine.historyCuts[idx] / engine.historyTotal[idx]
+                                        engine.historyTable[idx].toFloat()
                                     )
                                 }
                             }
@@ -216,7 +216,7 @@ class MoveGen(val position: Board, val engine: Engine) {
 
                                 quietMoves.addWithScore(
                                     singlePushMove.toCompact(),
-                                    if (engine.historyTotal[idx] == 0F) 0F else engine.historyCuts[idx] / engine.historyTotal[idx]
+                                    engine.historyTable[idx].toFloat()
                                 )
                             }
                         }

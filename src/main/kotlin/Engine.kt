@@ -32,8 +32,7 @@ class Engine {
 
     val killers: Array<Array<Move>> = Array(MAX_GAME_PLY) { Array(2) { Move.NULL_MOVE } }
 
-    val historyCuts: FloatArray = FloatArray(2 * 64 * 64) // "normal" history heuristic scores
-    val historyTotal: FloatArray = FloatArray(2 * 64 * 64) // used for relative history heuristic
+    val historyTable: IntArray = IntArray(2 * 64 * 64)
 
     val pvTable: CompactMoveArray = CompactMoveArray(MAX_SEARCH_PLY * MAX_SEARCH_PLY)
     val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
@@ -286,13 +285,24 @@ class Engine {
                 }
             }
 
-            val historyIndex = position.turn.idx() * 64 * 64 + move.src.value * 64 + move.dst.value
-            historyTotal[historyIndex] += remainingDepth + 1
             if (score >= beta) {
                 if (move.capture == Piece.NONE && move.promotion == PieceType.NONE) {
                     putKiller(move, plyFromRoot)
 
-                    historyCuts[historyIndex] += remainingDepth + 1
+                    // apply history bonus for move that caused the cutoff
+                    updateHistory(position.turn, move.src, move.dst, remainingDepth * remainingDepth)
+
+                    // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
+                    val compactMove = move.toCompact()
+                    for (i in 0..<moveGen.quietMoves.size) {
+                        if (moveGen.quietMoves.moves[i] == compactMove) {
+                            break
+                        }
+
+                        val earlierMove = moveGen.quietMoves.moves[i]
+
+                        updateHistory(position.turn, earlierMove.src, earlierMove.dst, - remainingDepth * remainingDepth)
+                    }
                 }
 
                 collectSearchStats(ttEntry, firstMoveWasBestMove, bestMove, firstIsKiller)
@@ -457,17 +467,22 @@ class Engine {
         }
     }
 
+    fun updateHistory(color: Color, from: Square, to: Square, bonus: Int) {
+        val clampedBonus = bonus.coerceIn(-HISTORY_MAX, HISTORY_MAX)
+        val index = color.idx() * 64 * 64 + from.value * 64 + to.value
+
+        historyTable[index] += clampedBonus - historyTable[index] * abs(clampedBonus) / HISTORY_MAX
+    }
+
     fun ageHistory() {
-        for (i in historyCuts.indices) {
-            historyCuts[i] /= 4
-            historyTotal[i] /= 4
+        for (i in historyTable.indices) {
+            historyTable[i] /= 2
         }
     }
 
     fun resetHistory() {
-        for (i in historyCuts.indices) {
-            historyCuts[i] = 0F
-            historyTotal[i] = 0F
+        for (i in historyTable.indices) {
+            historyTable[i] = 0
         }
     }
 
@@ -625,6 +640,8 @@ class Engine {
         const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
 
         val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
+
+        val HISTORY_MAX = 1 shl 16
 
         fun scoreToWdl(score: Score): Float {
             if (abs(score) >= MIN_MATE_SCORE) {
