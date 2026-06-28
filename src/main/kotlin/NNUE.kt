@@ -23,7 +23,7 @@ object NNUE {
 
     fun load() {
 
-        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_halfKA_hm_64_v7.bin")?.readAllBytes()
+        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_halfKA_hm_64_v8.bin")?.readAllBytes()
         val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
 
         buffer.get(ftBiases)
