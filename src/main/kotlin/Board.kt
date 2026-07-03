@@ -314,25 +314,24 @@ class Board {
         return false
     }
 
-    fun see(captureMove: Move): Score {
+    fun seeWithThreshold(captureMove: Move, threshold: Score): Boolean {
         val firstVictim = captureMove.capture
         var attacker = pieces[captureMove.src.value]
 
         seeGain[0] = SEE_MATERIAL_VALUES[firstVictim.type().idx()]
 
+        // if we can't beat the threshold by capturing a free piece, we never will
+        if (seeGain[0] < threshold) return false
+
+        // if the capturing piece gets recaptured, and we're still meeting the threshold, the opponent can't change that
+        if (seeGain[1] - SEE_MATERIAL_VALUES[pieces[captureMove.src.value].type().idx()] >= threshold) return true
+
         var d = 0
         var side = turn.opponent()
-
-        val attackerSquares = TreeSet<Square>(Comparator { squareA, squareB ->
-            return@Comparator SEE_MATERIAL_VALUES[pieces[squareA.value].type().idx()] - SEE_MATERIAL_VALUES[pieces[squareB.value].type().idx()]
-        })
 
         var attackersBB = ((attackersTargeting(captureMove.dst, Color.WHITE)
                 or attackersTargeting(captureMove.dst, Color.BLACK))
                 and captureMove.src.bb().inv())
-        Bitboards.forAllSquares(attackersBB) { attackerSquare ->
-            attackerSquares.add(attackerSquare)
-        }
 
         var tempOcc = occupiedBB and captureMove.src.bb().inv()
 
@@ -358,15 +357,21 @@ class Board {
                 assert(newAttackerBB.countOneBits() == 1) // can only be one new attacker per capture
 
                 attackersBB = attackersBB or newAttackerBB
-                attackerSquares.add(Square(newAttackerBB.countTrailingZeroBits()))
             }
 
-            // get next attacker
-            val nextAttackerSquare = attackerSquares.find { attackerSquare -> (attackerSquare.bb() and colorsBB[side.idx()]) != 0L}
+            var nextAttackerBitboard: Bitboard = 0L
+            for (potentialAttacker in PieceType.BY_VALUE_ASC) {
+                val bb = attackersBB and colorsBB[side.idx()] and piecesBB[potentialAttacker]
+
+                if (bb != 0L) {
+                    nextAttackerBitboard = bb
+                }
+            }
+
             // if there are...
-            if (nextAttackerSquare == null // ...no attackers left or...
-                || (nextAttackerSquare.bb() and piecesBB[PieceType.KING.idx()] != 0L // ...the attacker we got is a king (which can only get selected as the last piece for a side)...
-                        && attackersBB and nextAttackerSquare.bb().inv() != 0L) // ...and there are still other attackers left (which can only mean attackers of the other player, as the king was our last one)
+            if (nextAttackerBitboard == 0L // ...no attackers left or...
+                || (nextAttackerBitboard and piecesBB[PieceType.KING.idx()] != 0L // ...the attacker we got is a king (which can only get selected as the last piece for a side)...
+                        && attackersBB and nextAttackerBitboard.inv() != 0L) // ...and there are still other attackers left (which can only mean attackers of the other player, as the king was our last one)
             ) {
                 d--
                 break
@@ -374,9 +379,8 @@ class Board {
 
             seeGain[d] = SEE_MATERIAL_VALUES[attacker.type().idx()] - seeGain[d-1]
 
-            attacker = pieces[nextAttackerSquare.value]
-            attackerSquares.remove(nextAttackerSquare)
-            tempOcc = tempOcc and nextAttackerSquare.bb().inv()
+            attacker = pieces[nextAttackerBitboard.countTrailingZeroBits()]
+            tempOcc = tempOcc and nextAttackerBitboard.inv()
             attackersBB = attackersBB and tempOcc
 
             side = side.opponent()
@@ -387,7 +391,7 @@ class Board {
             d--
         }
 
-        return seeGain[0]
+        return seeGain[0] >= threshold
     }
 
     fun areSquaresAttackedBy(squares: Bitboard, color: Color, occupancy: Bitboard = occupiedBB): Boolean {

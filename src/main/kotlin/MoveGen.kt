@@ -100,10 +100,9 @@ class MoveGen(val position: Board, val engine: Engine) {
                                     val epMove = Move(src, position.epSquare, Piece(position.turn.opponent(), PieceType.PAWN), isEp = true)
 
                                     if (!position.putsCurrentPlayerInCheck(epMove)) {
-                                        val seeScore = if (doSEE) position.see(epMove).toFloat() else GOOD_CAPTURE_THRESHOLD
-                                        (if (seeScore >= GOOD_CAPTURE_THRESHOLD) goodCaptures else badCaptures).addWithScore(
-                                            epMove.toCompact(),
-                                            seeScore
+
+                                        (if (!doSEE || position.seeWithThreshold(epMove, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                            epMove.toCompact()
                                         )
                                     }
                                 }
@@ -120,17 +119,14 @@ class MoveGen(val position: Board, val engine: Engine) {
                                         if (aggressorType == PieceType.PAWN.idx() && victimSquare.rank == position.turn.opponent().backRank()) {
                                             captureMove.forPromotionVariants { m ->
 
-                                                val seeScore = if (doSEE) position.see(m).toFloat() else GOOD_CAPTURE_THRESHOLD
-                                                (if (seeScore >= GOOD_CAPTURE_THRESHOLD) goodCaptures else badCaptures).addWithScore(
-                                                    m.toCompact(),
-                                                    seeScore
+                                                (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                                    m.toCompact()
                                                 )
                                             }
                                         } else {
-                                            val seeScore = if (doSEE) position.see(captureMove).toFloat() else GOOD_CAPTURE_THRESHOLD
-                                            (if (seeScore >= GOOD_CAPTURE_THRESHOLD) goodCaptures else badCaptures).addWithScore(
-                                                captureMove.toCompact(),
-                                                seeScore
+
+                                            (if (!doSEE || position.seeWithThreshold(captureMove, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                                captureMove.toCompact()
                                             )
                                         }
                                     }
@@ -344,7 +340,7 @@ class MoveGen(val position: Board, val engine: Engine) {
     }
 
     companion object {
-        const val GOOD_CAPTURE_THRESHOLD = 0F
+        const val GOOD_CAPTURE_THRESHOLD = 0
 
         val KNIGHT_ATTACKS: LongArray = LongArray(64) { idx ->
             relativeMoves(
@@ -445,7 +441,7 @@ class MoveGen(val position: Board, val engine: Engine) {
     enum class Stage(val sorted: Boolean = false) {
         HASH,
         CAPTURES_INIT,
-        GOOD_CAPTURES(true),
+        GOOD_CAPTURES,
         KILLER,
         NC_PROM,
         BAD_CAPTURES,

@@ -95,6 +95,11 @@ class Engine {
                 continue
             }
 
+            // see pruning
+            if (!inCheck && !position.seeWithThreshold(move, 0)) {
+                continue
+            }
+
             val stateInfo = doMoveWithAccUpdate(plyFromRoot, move)
             val score = -qSearch(plyFromRoot + 1, -beta, -alpha)
             position.undoMove(move, stateInfo)

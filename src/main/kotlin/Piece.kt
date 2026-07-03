@@ -56,6 +56,10 @@ value class PieceType(val value: Int) { // ...0ttt
         val BISHOP_KNIGHT_SWAP_MAP: IntArray = intArrayOf(
             PAWN.idx(), KNIGHT.idx(), BISHOP.idx(), ROOK.idx(), QUEEN.idx(), KING.idx()
         )
+
+        val BY_VALUE_ASC: IntArray = intArrayOf(
+            PAWN.idx(), KNIGHT.idx(), BISHOP.idx(), ROOK.idx(), QUEEN.idx(), KING.idx()
+        )
     }
 }
 
