@@ -171,23 +171,30 @@ class Engine {
             && remainingDepth > 2
             && position.nonKpPieceCount(position.turn) > 0
         ) {
-            var reduction = 2
-            if (remainingDepth > 6) reduction = 3
+            staticEval = if (hasStaticEval) staticEval else evaluate(plyFromRoot)
+            hasStaticEval = true
 
-            val stateInfo = doNullMoveWithAccUpdate(plyFromRoot)
+            if (staticEval >= beta) {
 
-            val nullMoveResult = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -beta + 1, false)
-            val nullMoveScore = -nullMoveResult.score
+                var reduction = 2
+                if (remainingDepth > 6) reduction = 3
 
-            position.undoNullMove(stateInfo)
+                val stateInfo = doNullMoveWithAccUpdate(plyFromRoot)
 
-            if (nullMoveResult.aborted) {
-                return Result.ABORT
-            }
+                val nullMoveResult =
+                    search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -beta + 1, false)
+                val nullMoveScore = -nullMoveResult.score
 
-            // if null move would cause beta cutoff, we can assume the best move we can find in this position would also cause a beta cutoff
-            if (nullMoveScore >= beta) {
-                return Result(Move.NULL_MOVE, nullMoveScore)
+                position.undoNullMove(stateInfo)
+
+                if (nullMoveResult.aborted) {
+                    return Result.ABORT
+                }
+
+                // if null move would cause beta cutoff, we can assume the best move we can find in this position would also cause a beta cutoff
+                if (nullMoveScore >= beta) {
+                    return Result(Move.NULL_MOVE, nullMoveScore)
+                }
             }
         }
 
