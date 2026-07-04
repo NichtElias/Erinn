@@ -5,6 +5,7 @@ import java.io.File
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.min
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -244,13 +245,13 @@ class Engine {
 
             var reduction = 0
 
-            if (!isPV && remainingDepth >= 3 && moveCount > 4
+            if (!isPV && remainingDepth >= 2 && moveCount > 4
                 && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
                 && !isKiller(move, plyFromRoot)
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
             ) {
-                reduction = 1 + ((remainingDepth - 3) / 2)
+                reduction = min(1 + ((remainingDepth - 2) / 2), remainingDepth - 1)
             }
 
             var result: Result
