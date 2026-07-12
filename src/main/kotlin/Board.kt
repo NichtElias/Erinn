@@ -324,7 +324,7 @@ class Board {
         if (seeGain[0] < threshold) return false
 
         // if the capturing piece gets recaptured, and we're still meeting the threshold, the opponent can't change that
-        if (seeGain[1] - SEE_MATERIAL_VALUES[pieces[captureMove.src.value].type().idx()] >= threshold) return true
+        if (seeGain[1] - SEE_MATERIAL_VALUES[attacker.type().idx()] >= threshold) return true
 
         var d = 0
         var side = turn.opponent()
@@ -363,8 +363,9 @@ class Board {
             for (potentialAttacker in PieceType.BY_VALUE_ASC) {
                 val bb = attackersBB and colorsBB[side.idx()] and piecesBB[potentialAttacker]
 
+                nextAttackerBitboard = bb.takeLowestOneBit()
                 if (bb != 0L) {
-                    nextAttackerBitboard = bb
+                    break
                 }
             }
 
