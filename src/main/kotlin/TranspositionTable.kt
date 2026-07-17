@@ -8,10 +8,19 @@ class TranspositionTable(capacity: Int) {
 
     val entries: Array<Entry?> = Array(capacity) { null }
 
-    fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move? = null) {
-        val entry = Entry(key, draft.toShort(), adjustScore(score, perspective, plyFromRoot), boundType, (bestMove ?: Move.NULL_MOVE).toCompact())
+    fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move) {
+        val index = (key.toULong() % entries.size.toUInt()).toInt()
+        val prevEntry = entries[index]
 
-        entries[(key.toULong() % entries.size.toUInt()).toInt()] = entry
+        val entry = Entry(
+            key, draft.toShort(),
+            adjustScore(score, perspective, plyFromRoot), boundType,
+            (if (boundType == BOUND_UPPER && bestMove == Move.NULL_MOVE)
+                    (if (prevEntry?.key == key) prevEntry.bestMove else Move.NULL_MOVE.toCompact())
+            else bestMove.toCompact())
+        )
+
+        entries[index] = entry
     }
 
     fun get(key: Long): Entry? {

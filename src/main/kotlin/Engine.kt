@@ -281,10 +281,10 @@ class Engine {
                 }
 
                 bestScore = score
-                bestMove = move
                 if (score > alpha) {
                     alpha = score
                     alphaRaised = true
+                    bestMove = move
 
                     if (isPV) {
                         pvTable[plyFromRoot * MAX_SEARCH_PLY + 0] = move.toCompact()
@@ -321,8 +321,8 @@ class Engine {
                 collectSearchStats(ttEntry, firstMoveWasBestMove, bestMove, firstIsKiller)
 
                 tt.store(position.zobristHash, remainingDepth, position.turn,
-                    plyFromRoot, bestScore, TranspositionTable.BOUND_LOWER, move)
-                return Result(bestMove, bestScore)
+                    plyFromRoot, score, TranspositionTable.BOUND_LOWER, move)
+                return Result(move, score)
             }
         }
 
