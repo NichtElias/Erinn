@@ -1,7 +1,7 @@
 package party.elias
 
 abstract class Accumulator {
-    val contents: IntArray = IntArray(NNUE.ACC_HALF_WITH_PSQT_SIZE)
+    val contents: IntArray = IntArray(NNUE.ACC_HALF_SIZE)
     val diff: AccumulatorDiff = AccumulatorDiff()
     abstract val color: Color
     var dirty: Boolean = true
@@ -11,14 +11,14 @@ abstract class Accumulator {
 
     fun fullRefresh() {
 
-        for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
+        for (i in 0..<NNUE.ACC_HALF_SIZE) {
             contents[i] = NNUE.ftBiases[i]
         }
 
         fullRefreshData!!.forEachFeature { piece, square ->
             val weights = NNUE.ftWeights[feature(piece, square, fullRefreshData!!.kingSquare)]
 
-            for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
+            for (i in 0..<NNUE.ACC_HALF_SIZE) {
                 contents[i] += weights[i]
             }
         }
@@ -48,7 +48,7 @@ abstract class Accumulator {
         val addFeatureWeights = NNUE.ftWeights[diff.addFeatures[0]]
         val subFeatureWeights = NNUE.ftWeights[diff.subFeatures[0]]
 
-        for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
+        for (i in 0..<NNUE.ACC_HALF_SIZE) {
             contents[i] = fromContents[i] + addFeatureWeights[i] - subFeatureWeights[i]
         }
     }
@@ -60,7 +60,7 @@ abstract class Accumulator {
         val sub0FeatureWeights = NNUE.ftWeights[diff.subFeatures[0]]
         val sub1FeatureWeights = NNUE.ftWeights[diff.subFeatures[1]]
 
-        for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
+        for (i in 0..<NNUE.ACC_HALF_SIZE) {
             contents[i] = fromContents[i] + addFeatureWeights[i] - sub0FeatureWeights[i] - sub1FeatureWeights[i]
         }
     }
@@ -73,7 +73,7 @@ abstract class Accumulator {
         val sub0FeatureWeights = NNUE.ftWeights[diff.subFeatures[0]]
         val sub1FeatureWeights = NNUE.ftWeights[diff.subFeatures[1]]
 
-        for (i in 0..<NNUE.ACC_HALF_WITH_PSQT_SIZE) {
+        for (i in 0..<NNUE.ACC_HALF_SIZE) {
             contents[i] = fromContents[i] + add0FeatureWeights[i] + add1FeatureWeights[i] - sub0FeatureWeights[i] - sub1FeatureWeights[i]
         }
     }

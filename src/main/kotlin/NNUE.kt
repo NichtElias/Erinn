@@ -8,13 +8,11 @@ object NNUE {
 
     const val FEATURE_NUM = 6 * 2 * 32 * 64
     const val ACC_HALF_SIZE = 64
-    const val PSQT_BUCKETS = 8
-    const val ACC_HALF_WITH_PSQT_SIZE = ACC_HALF_SIZE + PSQT_BUCKETS
 
     const val OUTPUT_BUCKETS = 8
 
-    val ftBiases: IntArray = IntArray(ACC_HALF_WITH_PSQT_SIZE)
-    val ftWeights: Array<IntArray> = Array(FEATURE_NUM) { IntArray(ACC_HALF_WITH_PSQT_SIZE) } // this one is laid out differently, so that the weights for a single feature are contiguous in memory
+    val ftBiases: IntArray = IntArray(ACC_HALF_SIZE)
+    val ftWeights: Array<IntArray> = Array(FEATURE_NUM) { IntArray(ACC_HALF_SIZE) } // this one is laid out differently, so that the weights for a single feature are contiguous in memory
     val outBiases: IntArray = IntArray(OUTPUT_BUCKETS)
     val outWeights: IntArray = IntArray(ACC_HALF_SIZE * 2 * OUTPUT_BUCKETS)
 
@@ -23,7 +21,7 @@ object NNUE {
 
     fun load() {
 
-        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_halfKA_hm_64_v8.bin")?.readAllBytes()
+        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_halfKA_hm_64_screlu_v9.bin")?.readAllBytes()
         val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
 
         buffer.get(ftBiases)
@@ -45,6 +43,10 @@ object NNUE {
             accClamped[i + ACC_HALF_SIZE] = min(max(accTheir[i], 0), Q_SCALE_ACTIVATION)
         }
 
+        for (i in 0..<(ACC_HALF_SIZE * 2)) {
+            accClamped[i] = accClamped[i] * accClamped[i] / Q_SCALE_ACTIVATION
+        }
+
         val bucketIndex = (pieceCount - 1) / 4
 
         var outOut = outBiases[bucketIndex]
@@ -54,9 +56,7 @@ object NNUE {
             outOut += accClamped[j] * outWeights[j + outWeightsOffset]
         }
 
-        val psqtValue = (accOur[ACC_HALF_SIZE + bucketIndex] - accTheir[ACC_HALF_SIZE + bucketIndex]) * Q_SCALE_OTHER / 2
-
-        return (outOut + psqtValue) / Q_SCALE_OTHER * 512 / Q_SCALE_ACTIVATION
+        return outOut / Q_SCALE_OTHER * 512 / Q_SCALE_ACTIVATION
     }
 
     fun whiteFeature(piece: Piece, square: Square, kingSquare: Square): Int {
