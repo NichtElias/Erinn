@@ -57,7 +57,8 @@ class AccumulatorStack {
             }
 
             // we did a king move, that means the accumulator of the color that played the move needs a full refresh
-            return true
+            return ((move.src.value xor move.dst.value) and 0b000100) != 0 || (if (board.turn == Color.WHITE) NNUE.KING_BUCKETS[move.src.value] != NNUE.KING_BUCKETS[move.dst.value]
+                else NNUE.KING_BUCKETS[move.src.mirror.value] != NNUE.KING_BUCKETS[move.dst.mirror.value])
         }
 
         return false

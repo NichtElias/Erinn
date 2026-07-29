@@ -6,8 +6,8 @@ import kotlin.math.min
 
 object NNUE {
 
-    const val FEATURE_NUM = 6 * 2 * 32 * 64
-    const val ACC_HALF_SIZE = 64
+    const val FEATURE_NUM = 6 * 2 * 8 * 64
+    const val ACC_HALF_SIZE = 128
 
     const val OUTPUT_BUCKETS = 8
 
@@ -19,9 +19,20 @@ object NNUE {
     const val Q_SCALE_ACTIVATION = 8191
     const val Q_SCALE_OTHER = 2048
 
+    val KING_BUCKETS = intArrayOf(
+        0, 1, 2, 3, 3, 2, 1, 0,
+        0, 4, 5, 6, 6, 5, 4, 0,
+        4, 4, 5, 6, 6, 5, 4, 4,
+        4, 4, 5, 6, 6, 5, 4, 4,
+        7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7
+    )
+
     fun load() {
 
-        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_halfKA_hm_64_screlu_v9.bin")?.readAllBytes()
+        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_768x8_hm_128_screlu_v10.bin")?.readAllBytes()
         val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
 
         buffer.get(ftBiases)
@@ -62,28 +73,46 @@ object NNUE {
     fun whiteFeature(piece: Piece, square: Square, kingSquare: Square): Int {
         val hm = ((kingSquare.value and 0b000100) ushr 2) * 0b000111
 
-        var hmKingSquare = kingSquare.value xor hm
-        // king square gets packed into 5 bits, as the highest bit in the hm king square's file is always 0,
-        // so we shift rank over by one
-        hmKingSquare = ((hmKingSquare and 0b111000) ushr 1) or (hmKingSquare and 0b000011)
+//        var hmKingSquare = kingSquare.value xor hm
+//        // king square gets packed into 5 bits, as the highest bit in the hm king square's file is always 0,
+//        // so we shift rank over by one
+//        hmKingSquare = ((hmKingSquare and 0b111000) ushr 1) or (hmKingSquare and 0b000011)
+//
+//        return (piece.type().idx() * 2 * 32 * 64
+//                + (if (piece.color() == Color.WHITE) 0 else 1) * 32 * 64
+//                + hmKingSquare * 64
+//                + (square.value xor hm))
 
-        return (piece.type().idx() * 2 * 32 * 64
-                + (if (piece.color() == Color.WHITE) 0 else 1) * 32 * 64
-                + hmKingSquare * 64
+//        return (piece.type().idx() * 2 * 64
+//                + (if (piece.color() == Color.WHITE) 0 else 1) * 64
+//                + square.value)
+
+        return (piece.type().idx() * 2 * 8 * 64
+                + (if (piece.color() == Color.WHITE) 0 else 1) * 8 * 64
+                + KING_BUCKETS[kingSquare.value] * 64
                 + (square.value xor hm))
     }
 
     fun blackFeature(piece: Piece, square: Square, kingSquare: Square): Int {
         val hm = ((kingSquare.value and 0b000100) ushr 2) * 0b000111
 
-        var hmKingSquare = kingSquare.mirror.value xor hm
-        // king square gets packed into 5 bits, as the highest bit in the hm king square's file is always 0,
-        // so we shift rank over by one
-        hmKingSquare = ((hmKingSquare and 0b111000) ushr 1) or (hmKingSquare and 0b000011)
+//        var hmKingSquare = kingSquare.mirror.value xor hm
+//        // king square gets packed into 5 bits, as the highest bit in the hm king square's file is always 0,
+//        // so we shift rank over by one
+//        hmKingSquare = ((hmKingSquare and 0b111000) ushr 1) or (hmKingSquare and 0b000011)
+//
+//        return (piece.type().idx() * 2 * 32 * 64
+//                + (if (piece.color() == Color.BLACK) 0 else 1) * 32 * 64
+//                + hmKingSquare * 64
+//                + (square.mirror.value xor hm))
 
-        return (piece.type().idx() * 2 * 32 * 64
-                + (if (piece.color() == Color.BLACK) 0 else 1) * 32 * 64
-                + hmKingSquare * 64
+//        return (piece.type().idx() * 2 * 64
+//                + (if (piece.color() == Color.BLACK) 0 else 1) * 64
+//                + square.mirror.value)
+
+        return (piece.type().idx() * 2 * 8 * 64
+                + (if (piece.color() == Color.BLACK) 0 else 1) * 8 * 64
+                + KING_BUCKETS[kingSquare.mirror.value] * 64
                 + (square.mirror.value xor hm))
     }
 }
