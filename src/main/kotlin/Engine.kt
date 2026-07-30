@@ -132,13 +132,13 @@ class Engine {
         if (position.isDrawByRepetition() || position.halfMoves >= 100 || position.isDrawByInsufficientMaterial()) return Result.draw()
 
         // probe transposition table
-        val ttEntry = tt.get(position.zobristHash)
-        if (ttEntry != null && plyFromRoot != 0) {
-            if (ttEntry.draft >= remainingDepth) {
-                val adjustedScore = ttEntry.getAdjustedScore(position.turn, plyFromRoot)
-                when (ttEntry.bound) {
+        val ttValue = tt.get(position.zobristHash)
+        if (ttValue.v != 0L && plyFromRoot != 0) {
+            if (ttValue.draft >= remainingDepth) {
+                val adjustedScore = ttValue.getAdjustedScore(position.turn, plyFromRoot)
+                when (ttValue.boundType) {
                     TranspositionTable.BOUND_EXACT ->
-                        return Result(ttEntry.bestMove.toMove(), adjustedScore)
+                        return Result(ttValue.bestMove.toMove(), adjustedScore)
 
                     TranspositionTable.BOUND_LOWER -> if (adjustedScore >= beta && !isPV)
                         return Result(Move.NULL_MOVE, adjustedScore)
@@ -220,7 +220,7 @@ class Engine {
         var alphaRaised = false
 
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin(inCheck = inCheck, hashMove = ttEntry?.bestMove?.toMove(), killerMoves = killers[plyFromRoot], doSEE = remainingDepth > 2)
+        moveGen.begin(inCheck = inCheck, hashMove = ttValue.bestMove.toMove(), killerMoves = killers[plyFromRoot], doSEE = remainingDepth > 2)
 
         while (true) {
             val move = moveGen.nextMove() ?: break
@@ -318,7 +318,7 @@ class Engine {
                     }
                 }
 
-                collectSearchStats(ttEntry, firstMoveWasBestMove, bestMove, firstIsKiller)
+                collectSearchStats(ttValue, firstMoveWasBestMove, bestMove, firstIsKiller)
 
                 tt.store(position.zobristHash, remainingDepth, position.turn,
                     plyFromRoot, score, TranspositionTable.BOUND_LOWER, move)
@@ -336,7 +336,7 @@ class Engine {
         // we need to return something that isn't a checkmate score if we didn't actually search any moves
         if (moveCount - prunedMoves == 0) return Result(Move.NULL_MOVE, alpha)
 
-        collectSearchStats(ttEntry, firstMoveWasBestMove, bestMove, firstIsKiller)
+        collectSearchStats(ttValue, firstMoveWasBestMove, bestMove, firstIsKiller)
 
         if (alphaRaised) { // PV node
             tt.store(position.zobristHash, remainingDepth, position.turn,
@@ -432,16 +432,16 @@ class Engine {
     }
 
     private fun collectSearchStats(
-        ttEntry: TranspositionTable.Entry?,
+        ttValue: TranspositionTable.TTValue,
         firstMoveWasBestMove: Boolean,
         bestMove: Move,
         firstIsKiller: Boolean
     ) {
         if (debugMode) {
             totalSearchedNodes++
-            if (ttEntry != null) totalTTHits++
+            if (ttValue.v != 0L) totalTTHits++
             if (firstMoveWasBestMove) {
-                if (ttEntry != null && ttEntry.bestMove == bestMove.toCompact()) {
+                if (ttValue.v != 0L && ttValue.bestMove == bestMove.toCompact()) {
                     ttBestMoveCount++
                 } else if (bestMove.capture != Piece.NONE) {
                     captureBestMoveCount++

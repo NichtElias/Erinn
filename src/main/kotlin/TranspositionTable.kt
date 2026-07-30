@@ -4,36 +4,36 @@ import kotlin.random.Random
 
 typealias BoundType = Short
 
-class TranspositionTable(capacity: Int) {
+class TranspositionTable(val capacity: Int) {
 
-    val entries: Array<Entry?> = Array(capacity) { null }
+    val entries: LongArray = LongArray(capacity * 2)
 
     fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move) {
-        val index = (key.toULong() % entries.size.toUInt()).toInt()
-        val prevEntry = entries[index]
+        val index = (key.toULong() % capacity.toUInt()).toInt() * 2
 
-        val entry = Entry(
-            key, draft.toShort(),
-            adjustScore(score, perspective, plyFromRoot), boundType,
+        val newValue = TTValue(
             (if (boundType == BOUND_UPPER && bestMove == Move.NULL_MOVE)
-                    (if (prevEntry?.key == key) prevEntry.bestMove else Move.NULL_MOVE.toCompact())
-            else bestMove.toCompact())
+                    (if (entries[index] == key) TTValue(entries[index + 1]).bestMove else Move.NULL_MOVE.toCompact())
+            else bestMove.toCompact()),
+            adjustScore(score, perspective, plyFromRoot),
+            draft,
+            boundType
         )
 
-        entries[index] = entry
+        entries[index] = key
+        entries[index + 1] = newValue.v
     }
 
-    fun get(key: Long): Entry? {
-        val entry = entries[(key.toULong() % entries.size.toUInt()).toInt()]
-        if (entry?.key == key)
-            return entry
-        return null
+    fun get(key: Long): TTValue {
+        val index = (key.toULong() % capacity.toUInt()).toInt() * 2
+
+        if (entries[index] == key) return TTValue(entries[index + 1])
+
+        return TTValue(0)
     }
 
     fun clear() {
-        for (i in entries.indices) {
-            entries[i] = null
-        }
+        entries.fill(0)
     }
 
     fun fullPerMill(): Int {
@@ -44,21 +44,14 @@ class TranspositionTable(capacity: Int) {
 
         var occupiedSlots = 0
         for (i in 0..<1000) {
-            if (entries[i * stride] != null) occupiedSlots++
+            if (entries[i * stride] != 0L) occupiedSlots++
         }
 
         return occupiedSlots
     }
 
     companion object {
-        const val ENTRY_SIZE = (4 // reference to entry in array (reference)
-                + 12 // object header
-                + 8 // key (long)
-                + 2 // draft (short)
-                + 4 // score (int)
-                + 2 // bound type (short)
-                + 4 // best move (int)
-                + 0) // padding
+        const val ENTRY_SIZE = 8 + 8
 
         const val BOUND_UPPER: Short = 0b01
         const val BOUND_LOWER: Short = 0b10
@@ -123,8 +116,22 @@ class TranspositionTable(capacity: Int) {
         }
     }
 
+    @JvmInline
+    value class TTValue(val v: Long) {
+        val bestMove: CompactMove get() = CompactMove((v and 0x3FFFFF).toInt())
+        val score: Score get() = ((v ushr 22) and 0xFFFF).toShort().toInt()
+        val draft: Short get() = ((v ushr 38) and 0xFF).toShort()
+        val boundType: BoundType get() = ((v ushr 46) and 0b11).toShort()
 
-    data class Entry(val key: Long, val draft: Short, private val score: Score, val bound: BoundType, val bestMove: CompactMove) {
+        constructor(
+            bestMove: CompactMove, score: Score, draft: Int, boundType: BoundType
+        ) : this(
+            (bestMove.v.toLong() and 0x3FFFFF) // +22 bits
+            or ((score and 0xFFFF).toLong() shl 22) // +16 bits
+            or ((draft and 0xFF).toLong() shl 38) // +8 bits
+            or ((boundType.toLong() and 0b11) shl 46) // + 2 bits
+        ) // 48 bits used
+
         fun getAdjustedScore(perspective: Color, plyFromRoot: Int): Score {
             return adjustScore(score, perspective, -plyFromRoot)
         }
