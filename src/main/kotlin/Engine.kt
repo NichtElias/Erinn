@@ -133,19 +133,22 @@ class Engine {
 
         // probe transposition table
         val ttValue = tt.get(position.zobristHash)
-        if (ttValue.v != 0L && plyFromRoot != 0) {
-            if (ttValue.draft >= remainingDepth) {
-                val adjustedScore = ttValue.getAdjustedScore(position.turn, plyFromRoot)
-                when (ttValue.boundType) {
-                    TranspositionTable.BOUND_EXACT ->
-                        return Result(ttValue.bestMove.toMove(), adjustedScore)
+        if (!isPV
+            && ttValue.v != 0L
+            && plyFromRoot != 0
+            && ttValue.draft >= remainingDepth
+        ) {
+            // TT cutoffs
+            val adjustedScore = ttValue.getAdjustedScore(position.turn, plyFromRoot)
+            when (ttValue.boundType) {
+                TranspositionTable.BOUND_EXACT ->
+                    return Result(ttValue.bestMove.toMove(), adjustedScore)
 
-                    TranspositionTable.BOUND_LOWER -> if (adjustedScore >= beta && !isPV)
-                        return Result(Move.NULL_MOVE, adjustedScore)
+                TranspositionTable.BOUND_LOWER -> if (adjustedScore >= beta)
+                    return Result(Move.NULL_MOVE, adjustedScore)
 
-                    TranspositionTable.BOUND_UPPER -> if (adjustedScore < alpha && !isPV)
-                        return Result(Move.NULL_MOVE, adjustedScore)
-                }
+                TranspositionTable.BOUND_UPPER -> if (adjustedScore < alpha)
+                    return Result(Move.NULL_MOVE, adjustedScore)
             }
         }
 
