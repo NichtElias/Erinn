@@ -5,7 +5,9 @@ import java.io.File
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sign
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -254,7 +256,8 @@ class Engine {
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
             ) {
-                reduction = min(1 + ((remainingDepth - 2) / 2), remainingDepth - 1)
+                val historyIndex = position.turn.opponent().idx() * 64 * 64 + move.src.value * 64 + move.dst.value
+                reduction = min(1 + ((remainingDepth - 2 + if (historyTable[historyIndex] <= 0) 1 else -1) / 2), remainingDepth - 1)
             }
 
             var result: Result
@@ -420,11 +423,17 @@ class Engine {
                 sendUciInfo(d, elapsed, nodesSearched, result.score, getPv(), tt.fullPerMill())
 
             if (elapsed > limits.softTime || (abs(result.score) >= MIN_MATE_SCORE && MATE_SCORE - abs(result.score) < d)) {
-                return deepestResult
+                break
             }
         }
 
         if (debugMode) {
+            val historyMin = historyTable.min()
+            val historyMax = historyTable.max()
+            val historyMean = historyTable.sum() / historyTable.size
+            val historyMedian = historyTable.sorted()[historyTable.size / 2]
+            println("info string history stats: min: $historyMin max: $historyMax mean: $historyMean median: $historyMedian")
+
             print("info string first move hits: tt ${ttBestMoveCount.toFloat() / totalSearchedNodes * 100}%/${totalTTHits.toFloat() / totalSearchedNodes * 100}%, ")
             print("capture ${captureBestMoveCount.toFloat() / totalSearchedNodes * 100}%, ")
             print("killer ${killerBestMoveCount.toFloat() / totalSearchedNodes * 100}%, ")
