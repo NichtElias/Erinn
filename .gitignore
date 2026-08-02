@@ -8,9 +8,7 @@ build/
 testbench/
 fastchess.log
 fastchess-config.json
-
-### PST Tuning ###
-positions.csv
+UHO_Lichess_4852_v1.epd
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
