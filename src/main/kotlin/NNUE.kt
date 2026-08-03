@@ -43,8 +43,9 @@ object NNUE {
         buffer.get(outWeights)
     }
 
+    val accClamped = IntArray(ACC_HALF_SIZE * 2)
+
     fun evaluate(accOur: IntArray, accTheir: IntArray, pieceCount: Int): Score {
-        val accClamped = IntArray(ACC_HALF_SIZE * 2)
 
         for (i in 0..<ACC_HALF_SIZE) {
             accClamped[i] = min(max(accOur[i], 0), Q_SCALE_ACTIVATION)
