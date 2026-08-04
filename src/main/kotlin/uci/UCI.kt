@@ -111,7 +111,7 @@ fun run() {
                 i++
 
                 while (i < cmd.size) {
-                    engine.position.doMove(Move.fromUci(cmd[i++], engine.position))
+                    engine.position.doMove(Move.fromUci(cmd[i++], engine.position), Engine.MAX_SEARCH_PLY)
                 }
             }
 

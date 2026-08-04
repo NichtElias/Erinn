@@ -65,17 +65,15 @@ class Engine {
             NNUE.evaluate(accPair.black.contents, accPair.white.contents, pieceCount)
     }
 
-    fun doMoveWithAccUpdate(plyFromRoot: Int, move: Move): Board.StateInfo {
+    fun doMoveWithAccUpdate(plyFromRoot: Int, move: Move) {
         val doFullRefresh = accStack.preDoMove(plyFromRoot, move, position)
-        val stateInfo = position.doMove(move)
+        position.doMove(move, plyFromRoot)
         accStack.postDoMove(plyFromRoot, position, doFullRefresh)
-
-        return stateInfo
     }
 
-    fun doNullMoveWithAccUpdate(plyFromRoot: Int): Board.StateInfo {
+    fun doNullMoveWithAccUpdate(plyFromRoot: Int) {
         accStack.preDoNullMove(plyFromRoot)
-        return position.doNullMove()
+        position.doNullMove(plyFromRoot)
     }
 
     fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score): Score {
@@ -103,9 +101,9 @@ class Engine {
                 continue
             }
 
-            val stateInfo = doMoveWithAccUpdate(plyFromRoot, move)
+            doMoveWithAccUpdate(plyFromRoot, move)
             val score = -qSearch(plyFromRoot + 1, -beta, -alpha)
-            position.undoMove(move, stateInfo)
+            position.undoMove(move, plyFromRoot)
 
             if (score >= beta)
                 return score
@@ -185,13 +183,13 @@ class Engine {
                 var reduction = 2
                 if (remainingDepth > 6) reduction = 3
 
-                val stateInfo = doNullMoveWithAccUpdate(plyFromRoot)
+                doNullMoveWithAccUpdate(plyFromRoot)
 
                 val nullMoveResult =
                     search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -beta + 1, false)
                 val nullMoveScore = -nullMoveResult.score
 
-                position.undoNullMove(stateInfo)
+                position.undoNullMove(plyFromRoot)
 
                 if (nullMoveResult.aborted) {
                     return Result.ABORT
@@ -246,7 +244,7 @@ class Engine {
                 continue
             }
 
-            val stateInfo = doMoveWithAccUpdate(plyFromRoot, move)
+            doMoveWithAccUpdate(plyFromRoot, move)
 
             var reduction = 0
 
@@ -273,7 +271,7 @@ class Engine {
                 score = -result.score
             }
 
-            position.undoMove(move, stateInfo)
+            position.undoMove(move, plyFromRoot)
 
             if (result.aborted) return Result.ABORT
 
@@ -521,9 +519,9 @@ class Engine {
         while (true) {
             val move = moveGen.nextMove() ?: break
 
-            val stateInfo = position.doMove(move)
+            position.doMove(move, plyFromRoot)
             nodes += perft(plyFromRoot + 1, depth - 1)
-            position.undoMove(move, stateInfo)
+            position.undoMove(move, plyFromRoot)
         }
         return nodes
     }
@@ -539,9 +537,9 @@ class Engine {
             if (depth == 1) {
                 results[move] = 1
             } else {
-                val stateInfo = position.doMove(move)
+                position.doMove(move, 0)
                 results[move] = perft(1, depth - 1)
-                position.undoMove(move, stateInfo)
+                position.undoMove(move, 0)
             }
         }
 
@@ -582,7 +580,7 @@ class Engine {
             }
 
             // make move
-            position.doMove(searchResult.move)
+            position.doMove(searchResult.move, MAX_SEARCH_PLY)
         }
 
         for (position in positions) {
@@ -654,7 +652,7 @@ class Engine {
 
             if (allMoves.isEmpty()) break
 
-            position.doMove(allMoves[rng.nextInt(allMoves.size)])
+            position.doMove(allMoves[rng.nextInt(allMoves.size)], MAX_SEARCH_PLY)
         }
     }
 

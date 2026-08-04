@@ -1,6 +1,5 @@
 package party.elias
 
-import java.util.TreeSet
 import kotlin.math.max
 import kotlin.math.min
 
@@ -21,6 +20,9 @@ class Board {
 
     // just a reusable array for SEE, doesn't get affected by doMove/undoMove
     val seeGain: IntArray = IntArray(32)
+
+    // last index is used as temp storage for misc use cases such as naiveIsInCheckAfter
+    val stateInfoStack: Array<StateInfo> = Array(Engine.MAX_SEARCH_PLY + 1) { StateInfo() }
 
     val occupiedBB: Bitboard get() = colorsBB[0] or colorsBB[1]
     val ply: Int get() = (fullMoves - 1) * 2 + if (turn == Color.BLACK) 1 else 0 // for indexing positionHistory and the like
@@ -52,14 +54,15 @@ class Board {
         zobristHash = zobristHash xor TranspositionTable.pieceHash(piece, square)
     }
 
-    fun doMove(move: Move): StateInfo {
+    fun doMove(move: Move, plyFromRoot: Int) {
         // save some info for undoing the move
-        val stateInfo = StateInfo(
+        stateInfoStack[plyFromRoot].setAll(
             castlingRights,
             epSquare,
             halfMoves,
             zobristHash,
-            kingProtectors.clone()
+            kingProtectors[0],
+            kingProtectors[1]
         )
 
         val movingPiece = pieces[move.src.value]
@@ -149,11 +152,9 @@ class Board {
 
         // calculate info related to being in check (currentKingProtectors)
         calcCheckInfo()
-
-        return stateInfo
     }
 
-    fun undoMove(move: Move, stateInfo: StateInfo) {
+    fun undoMove(move: Move, plyFromRoot: Int) {
         val movedPiece = pieces[move.dst.value]
         val movedColor = movedPiece.color()
 
@@ -191,21 +192,23 @@ class Board {
         }
 
         // restore from StateInfo
+        val stateInfo = stateInfoStack[plyFromRoot]
         castlingRights = stateInfo.castlingRights
         epSquare = stateInfo.epSquare
         halfMoves = stateInfo.halfMoves
         zobristHash = stateInfo.zobristHash
-        kingProtectors[0] = stateInfo.kingProtectors[0]
-        kingProtectors[1] = stateInfo.kingProtectors[1]
+        kingProtectors[0] = stateInfo.kingProtectorsBlack
+        kingProtectors[1] = stateInfo.kingProtectorsWhite
     }
 
-    fun doNullMove(): StateInfo {
-        val stateInfo = StateInfo(
+    fun doNullMove(plyFromRoot: Int) {
+        stateInfoStack[plyFromRoot].setAll(
             castlingRights,
             epSquare,
             halfMoves,
             zobristHash,
-            kingProtectors
+            kingProtectors[0],
+            kingProtectors[1]
         ) // save some info for undoing the move
 
         // increment half moves
@@ -231,22 +234,21 @@ class Board {
 
         // calculate info related to being in check (currentKingProtectors)
         calcCheckInfo()
-
-        return stateInfo
     }
 
-    fun undoNullMove(stateInfo: StateInfo) {
+    fun undoNullMove(plyFromRoot: Int) {
         // bookkeeping
         turn = turn.opponent()
         fullMoves -= if (turn == Color.BLACK) 1 else 0
 
         // restore from StateInfo
+        val stateInfo = stateInfoStack[plyFromRoot]
         castlingRights = stateInfo.castlingRights
         epSquare = stateInfo.epSquare
         halfMoves = stateInfo.halfMoves
         zobristHash = stateInfo.zobristHash
-        kingProtectors[0] = stateInfo.kingProtectors[0]
-        kingProtectors[1] = stateInfo.kingProtectors[1]
+        kingProtectors[0] = stateInfo.kingProtectorsBlack
+        kingProtectors[1] = stateInfo.kingProtectorsWhite
 
         // no need to restore nnue accumulators, as they don't change from a null move
     }
@@ -502,9 +504,9 @@ class Board {
     fun naiveIsInCheckAfter(move: Move): Boolean {
         val currentColor = turn
 
-        val stateInfo = doMove(move)
+        doMove(move, Engine.MAX_SEARCH_PLY)
         val inCheck = isColorInCheck(currentColor)
-        undoMove(move, stateInfo)
+        undoMove(move, Engine.MAX_SEARCH_PLY)
 
         return inCheck
     }
@@ -530,9 +532,9 @@ class Board {
     fun putsOpponentInCheck(move: Move): Boolean {
         // just take the easy way out if it's en passant
         if (move.isEp) {
-            val stateInfo = doMove(move)
+            doMove(move, Engine.MAX_SEARCH_PLY)
             val putsInCheck = isColorInCheck(turn)
-            undoMove(move, stateInfo)
+            undoMove(move, Engine.MAX_SEARCH_PLY)
             return putsInCheck
         }
 
@@ -817,10 +819,27 @@ class Board {
     }
 
     class StateInfo(
-        val castlingRights: Long,
-        val epSquare: Square,
-        val halfMoves: Int,
-        val zobristHash: Long,
-        val kingProtectors: BitboardArray
-    )
+        var castlingRights: Long = 0,
+        var epSquare: Square = Square(0),
+        var halfMoves: Int = 0,
+        var zobristHash: Long = 0,
+        var kingProtectorsBlack: Bitboard = 0,
+        var kingProtectorsWhite: Bitboard = 0
+    ) {
+        fun setAll(
+            castlingRights: Long,
+            epSquare: Square,
+            halfMoves: Int,
+            zobristHash: Long,
+            kingProtectorsBlack: Bitboard,
+            kingProtectorsWhite: Bitboard
+        ) {
+            this.castlingRights = castlingRights
+            this.epSquare = epSquare
+            this.halfMoves = halfMoves
+            this.zobristHash = zobristHash
+            this.kingProtectorsBlack = kingProtectorsBlack
+            this.kingProtectorsWhite = kingProtectorsWhite
+        }
+    }
 }
