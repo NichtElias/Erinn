@@ -224,11 +224,11 @@ object Bitboards {
     }
 
     fun between(squareA: Square, squareB: Square): Bitboard {
-        return LINE_SEGMENTS[squareA.value * 64 + squareB.value]
+        return LINE_SEGMENTS[squareA.v * 64 + squareB.v]
     }
 
     fun line(squareA: Square, squareB: Square): Bitboard {
-        return LINES[squareA.value * 64 + squareB.value]
+        return LINES[squareA.v * 64 + squareB.v]
     }
 
     inline fun forAllSquares(bb: Bitboard, f: (square: Square) -> Unit) {

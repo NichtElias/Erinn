@@ -65,7 +65,7 @@ class TranspositionTable(val capacity: Int) {
         val HASH_EP_FILE: LongArray = LongArray(8)
 
         fun pieceHash(piece: Piece, square: Square): Long {
-            return HASH_PIECES[square.value * 12 + piece.color().idx() * 6 + piece.type().idx()]
+            return HASH_PIECES[square.v * 12 + piece.color.idx * 6 + piece.type.idx]
         }
 
         fun castlingHash(castlingRights: Bitboard): Long {

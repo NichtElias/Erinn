@@ -87,10 +87,10 @@ abstract class Accumulator {
 
     class FullRefreshData(val pieces: PieceArray, val kingSquare: Square) {
 
-        fun forEachFeature(func: (piece: Piece, square: Square) -> Unit) {
+        inline fun forEachFeature(func: (piece: Piece, square: Square) -> Unit) {
 
-            for ((sqi, rawPiece) in pieces.array.withIndex()) {
-                val piece = Piece(rawPiece)
+            for (sqi in pieces.array.indices) {
+                val piece = pieces[sqi]
                 if (piece != Piece.NONE) {
                     func(piece, Square(sqi))
                 }
@@ -100,7 +100,7 @@ abstract class Accumulator {
 
         companion object {
             fun fromBoard(board: Board, accumulatorColor: Color): FullRefreshData {
-                return FullRefreshData(PieceArray(board.pieces.array.clone()), board.kingSquares[accumulatorColor.idx()])
+                return FullRefreshData(PieceArray(board.pieces.array.clone()), board.kingSquares[accumulatorColor.idx])
             }
         }
     }
@@ -109,7 +109,7 @@ abstract class Accumulator {
         override val color: Color = Color.WHITE
 
         override fun feature(piece: Piece, square: Square, kingSquare: Square): Int {
-            return NNUE.whiteFeature(piece, square, kingSquare)
+            return NNUE.feature(piece.type, square, kingSquare, piece.color.idx xor 1)
         }
     }
 
@@ -117,7 +117,7 @@ abstract class Accumulator {
         override val color: Color = Color.BLACK
 
         override fun feature(piece: Piece, square: Square, kingSquare: Square): Int {
-            return NNUE.blackFeature(piece, square, kingSquare)
+            return NNUE.feature(piece.type, square.mirror, kingSquare.mirror, piece.color.idx)
         }
     }
 }

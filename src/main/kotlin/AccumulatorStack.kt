@@ -9,9 +9,9 @@ class AccumulatorStack {
 
     // returns true if it's a king move and full refresh is required
     fun preDoMove(plyFromRoot: Int, move: Move, board: Board): Boolean {
-        val movingPiece = board.pieces[move.src.value]
-        val whiteKingSquare = board.kingSquares[Color.WHITE.idx()]
-        val blackKingSquare = board.kingSquares[Color.BLACK.idx()]
+        val movingPiece = board.pieces[move.src.v]
+        val whiteKingSquare = board.kingSquares[Color.WHITE.idx]
+        val blackKingSquare = board.kingSquares[Color.BLACK.idx]
 
         val accPair = stack[plyFromRoot + 1]
 
@@ -39,7 +39,7 @@ class AccumulatorStack {
             accPair.subFeature(move.capture, capturedSquare, whiteKingSquare, blackKingSquare)
         }
 
-        if (movingPiece.type() == PieceType.KING) {
+        if (movingPiece.type == PieceType.KING) {
 
             if (move.castle != -1) {
                 val theRook = Piece(board.turn, PieceType.ROOK)
@@ -57,8 +57,8 @@ class AccumulatorStack {
             }
 
             // we did a king move, that means the accumulator of the color that played the move needs a full refresh
-            return ((move.src.value xor move.dst.value) and 0b000100) != 0 || (if (board.turn == Color.WHITE) NNUE.KING_BUCKETS[move.src.value] != NNUE.KING_BUCKETS[move.dst.value]
-                else NNUE.KING_BUCKETS[move.src.mirror.value] != NNUE.KING_BUCKETS[move.dst.mirror.value])
+            return ((move.src.v xor move.dst.v) and 0b000100) != 0 || (if (board.turn == Color.WHITE) NNUE.KING_BUCKETS[move.src.v] != NNUE.KING_BUCKETS[move.dst.v]
+                else NNUE.KING_BUCKETS[move.src.mirror.v] != NNUE.KING_BUCKETS[move.dst.mirror.v])
         }
 
         return false
@@ -67,14 +67,14 @@ class AccumulatorStack {
     fun postDoMove(plyFromRoot: Int, board: Board, doFullRefresh: Boolean) {
         val accPair = stack[plyFromRoot + 1]
 
-        // because this is called after doMove, board.turn is already the other player, do we need to do .opponent()
-        val colorToRefresh = board.turn.opponent()
+        // because this is called after doMove, board.turn is already the other player, do we need to do .opponent
+        val colorToRefresh = board.turn.opponent
 
         if (doFullRefresh) {
             val frd = Accumulator.FullRefreshData.fromBoard(board, colorToRefresh)
-            accPair.byColor[colorToRefresh.idx()].fullRefreshData = frd
+            accPair.byColor[colorToRefresh.idx].fullRefreshData = frd
         } else {
-            accPair.byColor[colorToRefresh.idx()].fullRefreshData = null
+            accPair.byColor[colorToRefresh.idx].fullRefreshData = null
         }
     }
 
@@ -93,31 +93,31 @@ class AccumulatorStack {
 
     fun updateAccAt(plyFromRoot: Int) {
 
-        for (color in arrayOf(Color.BLACK, Color.WHITE)) {
+        for (colorIdx in 0..1) {
             // find the first accumulator up the stack, that is clean or needs to be fully refreshed anyway
             var lastCleanAccumulator = 0
             for (i in plyFromRoot downTo 0) {
-                if (!stack[i].byColor[color.idx()].dirty || stack[i].byColor[color.idx()].fullRefreshData != null) {
+                if (!stack[i].byColor[colorIdx].dirty || stack[i].byColor[colorIdx].fullRefreshData != null) {
                     lastCleanAccumulator = i
                     break
                 }
             }
 
             // do a full refresh of the accumulator we found if necessary
-            val refreshCandidate = stack[lastCleanAccumulator].byColor[color.idx()]
+            val refreshCandidate = stack[lastCleanAccumulator].byColor[colorIdx]
             if (refreshCandidate.fullRefreshData != null) {
                 refreshCandidate.fullRefresh()
             }
 
             // go down the stack applying the diffs of all the accumulators along the way
             for (i in (lastCleanAccumulator + 1)..plyFromRoot) {
-                stack[i].byColor[color.idx()].applyDiff(stack[i - 1].byColor[color.idx()])
+                stack[i].byColor[colorIdx].applyDiff(stack[i - 1].byColor[colorIdx])
             }
         }
     }
 
     fun get(plyFromRoot: Int, color: Color): Accumulator {
-        return stack[plyFromRoot].byColor[color.idx()]
+        return stack[plyFromRoot].byColor[color.idx]
     }
 
     class AccPair {

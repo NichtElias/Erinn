@@ -6,7 +6,7 @@ import kotlin.math.min
 class Board {
     val piecesBB: BitboardArray = BitboardArray(6)
     val colorsBB: BitboardArray = BitboardArray(2)
-    val kingSquares: Array<Square> = Array(2) { _ -> Square(-1) }
+    val kingSquares: SquareArray = SquareArray(2)
     var castlingRights: Bitboard = 0
     var epSquare: Square = Square(-1) // the square that can be attacked after a double pawn push
     var turn: Color = Color.WHITE
@@ -28,28 +28,28 @@ class Board {
     val ply: Int get() = (fullMoves - 1) * 2 + if (turn == Color.BLACK) 1 else 0 // for indexing positionHistory and the like
 
     fun place(piece: Piece, square: Square) {
-        val pieceIdx = piece.type().idx()
-        val colorIdx = piece.color().idx()
+        val pieceIdx = piece.type.idx
+        val colorIdx = piece.color.idx
         piecesBB[pieceIdx] = piecesBB[pieceIdx] or square.bb()
         colorsBB[colorIdx] = colorsBB[colorIdx] or square.bb()
 
-        if (pieceIdx == PieceType.KING.value)
+        if (pieceIdx == PieceType.KING.v)
             kingSquares[colorIdx] = square
 
-        pieces[square.value] = piece
+        pieces[square.v] = piece
 
         zobristHash = zobristHash xor TranspositionTable.pieceHash(piece, square)
     }
 
     // remove piece on square, either because it moved elsewhere or it was captured
     fun remove(square: Square) {
-        val piece = pieces[square.value]
-        val pieceIdx = piece.type().idx()
-        val colorIdx = piece.color().idx()
+        val piece = pieces[square.v]
+        val pieceIdx = piece.type.idx
+        val colorIdx = piece.color.idx
         piecesBB[pieceIdx] = piecesBB[pieceIdx] and square.bb().inv()
         colorsBB[colorIdx] = colorsBB[colorIdx] and square.bb().inv()
 
-        pieces[square.value] = Piece.NONE
+        pieces[square.v] = Piece.NONE
 
         zobristHash = zobristHash xor TranspositionTable.pieceHash(piece, square)
     }
@@ -65,9 +65,9 @@ class Board {
             kingProtectors[1]
         )
 
-        val movingPiece = pieces[move.src.value]
-        val movingColor = movingPiece.color()
-        val movingType = movingPiece.type()
+        val movingPiece = pieces[move.src.v]
+        val movingColor = movingPiece.color
+        val movingType = movingPiece.type
 
         // remove current castling rights from hash
         zobristHash = zobristHash xor TranspositionTable.castlingHash(castlingRights)
@@ -105,7 +105,7 @@ class Board {
             val candidateEpSquare = move.src.enPassantActualCapture() // enPassantActualCapture not used for intended purpose here
 
             // check if ep is actually possible (barring pins, that would be too hard to check) for better FIDE compliance
-            if (Bitboards.EN_PASSANT_CAPTURER_SQUARES[candidateEpSquare.value] and piecesBB[PieceType.PAWN.idx()] and colorsBB[turn.opponent().idx()] != 0L) {
+            if (Bitboards.EN_PASSANT_CAPTURER_SQUARES[candidateEpSquare.v] and piecesBB[PieceType.PAWN.idx] and colorsBB[turn.opponent.idx] != 0L) {
                 epSquare = candidateEpSquare
 
                 // update hash with new ep file
@@ -147,7 +147,7 @@ class Board {
 
         // bookkeeping
         fullMoves += if (turn == Color.BLACK) 1 else 0
-        turn = turn.opponent()
+        turn = turn.opponent
         positionHistory[ply] = zobristHash
 
         // calculate info related to being in check (currentKingProtectors)
@@ -155,11 +155,11 @@ class Board {
     }
 
     fun undoMove(move: Move, plyFromRoot: Int) {
-        val movedPiece = pieces[move.dst.value]
-        val movedColor = movedPiece.color()
+        val movedPiece = pieces[move.dst.v]
+        val movedColor = movedPiece.color
 
         // bookkeeping
-        turn = turn.opponent()
+        turn = turn.opponent
         fullMoves -= if (turn == Color.BLACK) 1 else 0
 
         // put piece back on src square
@@ -227,7 +227,7 @@ class Board {
 
         // bookkeeping
         fullMoves += if (turn == Color.BLACK) 1 else 0
-        turn = turn.opponent()
+        turn = turn.opponent
         positionHistory[ply] = zobristHash
 
         // no need to update the nnue accumulators as they don't change from a null move
@@ -238,7 +238,7 @@ class Board {
 
     fun undoNullMove(plyFromRoot: Int) {
         // bookkeeping
-        turn = turn.opponent()
+        turn = turn.opponent
         fullMoves -= if (turn == Color.BLACK) 1 else 0
 
         // restore from StateInfo
@@ -259,13 +259,13 @@ class Board {
     }
 
     fun updateKingProtectors(color: Color) {
-        val ksq = kingSquares[color.idx()]
+        val ksq = kingSquares[color.idx]
 
-        kingProtectors[color.idx()] = 0
+        kingProtectors[color.idx] = 0
 
-        var snipers = (((MoveGen.ROOK_ATTACK_MASKS[ksq.value] and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()]))
-                or (MoveGen.BISHOP_ATTACK_MASKS[ksq.value] and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()]))
-                ) and colorsBB[color.opponent().idx()])
+        var snipers = (((MoveGen.ROOK_ATTACK_MASKS[ksq.v] and (piecesBB[PieceType.ROOK.idx] or piecesBB[PieceType.QUEEN.idx]))
+                or (MoveGen.BISHOP_ATTACK_MASKS[ksq.v] and (piecesBB[PieceType.BISHOP.idx] or piecesBB[PieceType.QUEEN.idx]))
+                ) and colorsBB[color.opponent.idx])
 
         while (snipers != 0L) {
             val sniperSq = Square(snipers.countTrailingZeroBits())
@@ -274,15 +274,15 @@ class Board {
             val between = Bitboards.between(ksq, sniperSq) and occupiedBB
 
             if (between.countOneBits() == 1) {
-                kingProtectors[color.idx()] = kingProtectors[color.idx()] or between
+                kingProtectors[color.idx] = kingProtectors[color.idx] or between
             }
         }
     }
 
     fun nonKpPieceCount(color: Color): Int {
-        return ((piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.KNIGHT.idx()]
-                or piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()]
-                ) and colorsBB[color.idx()]).countOneBits()
+        return ((piecesBB[PieceType.BISHOP.idx] or piecesBB[PieceType.KNIGHT.idx]
+                or piecesBB[PieceType.ROOK.idx] or piecesBB[PieceType.QUEEN.idx]
+                ) and colorsBB[color.idx]).countOneBits()
     }
 
     fun isDrawByRepetition(): Boolean {
@@ -301,15 +301,15 @@ class Board {
     }
 
     fun isDrawByInsufficientMaterial(): Boolean {
-        if (piecesBB[PieceType.PAWN.idx()] == 0L && piecesBB[PieceType.QUEEN.idx()] == 0L && piecesBB[PieceType.ROOK.idx()] == 0L) {
-            if (piecesBB[PieceType.KNIGHT.idx()].countOneBits() + piecesBB[PieceType.BISHOP.idx()].countOneBits() <= 1) {
+        if (piecesBB[PieceType.PAWN.idx] == 0L && piecesBB[PieceType.QUEEN.idx] == 0L && piecesBB[PieceType.ROOK.idx] == 0L) {
+            if (piecesBB[PieceType.KNIGHT.idx].countOneBits() + piecesBB[PieceType.BISHOP.idx].countOneBits() <= 1) {
                 return true
             }
 
-            val ourBishops = piecesBB[PieceType.BISHOP.idx()] and colorsBB[turn.idx()]
-            val opponentBishops = piecesBB[PieceType.BISHOP.idx()] and colorsBB[turn.opponent().idx()]
+            val ourBishops = piecesBB[PieceType.BISHOP.idx] and colorsBB[turn.idx]
+            val opponentBishops = piecesBB[PieceType.BISHOP.idx] and colorsBB[turn.opponent.idx]
 
-            return (piecesBB[PieceType.KNIGHT.idx()] == 0L && ourBishops.countOneBits() == 1 && opponentBishops.countOneBits() == 1
+            return (piecesBB[PieceType.KNIGHT.idx] == 0L && ourBishops.countOneBits() == 1 && opponentBishops.countOneBits() == 1
                     && Square(ourBishops.countTrailingZeroBits()).parity == Square(opponentBishops.countTrailingZeroBits()).parity)
         }
 
@@ -318,18 +318,18 @@ class Board {
 
     fun seeWithThreshold(captureMove: Move, threshold: Score): Boolean {
         val firstVictim = captureMove.capture
-        var attacker = pieces[captureMove.src.value]
+        var attacker = pieces[captureMove.src.v]
 
-        seeGain[0] = SEE_MATERIAL_VALUES[firstVictim.type().idx()]
+        seeGain[0] = SEE_MATERIAL_VALUES[firstVictim.type.idx]
 
         // if we can't beat the threshold by capturing a free piece, we never will
         if (seeGain[0] < threshold) return false
 
         // if the capturing piece gets recaptured, and we're still meeting the threshold, the opponent can't change that
-        if (seeGain[0] - SEE_MATERIAL_VALUES[attacker.type().idx()] >= threshold) return true
+        if (seeGain[0] - SEE_MATERIAL_VALUES[attacker.type.idx] >= threshold) return true
 
         var d = 0
-        var side = turn.opponent()
+        var side = turn.opponent
 
         var attackersBB = ((attackersTargeting(captureMove.dst, Color.WHITE)
                 or attackersTargeting(captureMove.dst, Color.BLACK))
@@ -342,15 +342,15 @@ class Board {
 
             // add new attackers from x-ray attacks
             var newAttackerBB = 0L
-            if (attacker.type() == PieceType.PAWN || attacker.type() == PieceType.BISHOP || attacker.type() == PieceType.QUEEN) {
-                newAttackerBB = newAttackerBB or (Magic.getBishopAttacks(captureMove.dst.value, tempOcc)
-                        and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()])
+            if (attacker.type == PieceType.PAWN || attacker.type == PieceType.BISHOP || attacker.type == PieceType.QUEEN) {
+                newAttackerBB = newAttackerBB or (Magic.getBishopAttacks(captureMove.dst.v, tempOcc)
+                        and (piecesBB[PieceType.BISHOP.idx] or piecesBB[PieceType.QUEEN.idx])
                         and tempOcc and attackersBB.inv()
                 )
             }
-            if (attacker.type() == PieceType.ROOK || attacker.type() == PieceType.QUEEN) {
-                newAttackerBB = newAttackerBB or (Magic.getRookAttacks(captureMove.dst.value, tempOcc)
-                        and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()])
+            if (attacker.type == PieceType.ROOK || attacker.type == PieceType.QUEEN) {
+                newAttackerBB = newAttackerBB or (Magic.getRookAttacks(captureMove.dst.v, tempOcc)
+                        and (piecesBB[PieceType.ROOK.idx] or piecesBB[PieceType.QUEEN.idx])
                         and tempOcc and attackersBB.inv()
                 )
             }
@@ -363,7 +363,7 @@ class Board {
 
             var nextAttackerBitboard: Bitboard = 0L
             for (potentialAttacker in PieceType.BY_VALUE_ASC) {
-                val bb = attackersBB and colorsBB[side.idx()] and piecesBB[potentialAttacker]
+                val bb = attackersBB and colorsBB[side.idx] and piecesBB[potentialAttacker]
 
                 nextAttackerBitboard = bb.takeLowestOneBit()
                 if (bb != 0L) {
@@ -373,20 +373,20 @@ class Board {
 
             // if there are...
             if (nextAttackerBitboard == 0L // ...no attackers left or...
-                || (nextAttackerBitboard and piecesBB[PieceType.KING.idx()] != 0L // ...the attacker we got is a king (which can only get selected as the last piece for a side)...
+                || (nextAttackerBitboard and piecesBB[PieceType.KING.idx] != 0L // ...the attacker we got is a king (which can only get selected as the last piece for a side)...
                         && attackersBB and nextAttackerBitboard.inv() != 0L) // ...and there are still other attackers left (which can only mean attackers of the other player, as the king was our last one)
             ) {
                 d--
                 break
             }
 
-            seeGain[d] = SEE_MATERIAL_VALUES[attacker.type().idx()] - seeGain[d-1]
+            seeGain[d] = SEE_MATERIAL_VALUES[attacker.type.idx] - seeGain[d-1]
 
             attacker = pieces[nextAttackerBitboard.countTrailingZeroBits()]
             tempOcc = tempOcc and nextAttackerBitboard.inv()
             attackersBB = attackersBB and tempOcc
 
-            side = side.opponent()
+            side = side.opponent
         }
 
         while (d > 0) {
@@ -400,11 +400,11 @@ class Board {
     fun areSquaresAttackedBy(squares: Bitboard, color: Color, occupancy: Bitboard = occupiedBB): Boolean {
         return Bitboards.checkSquares(squares) { square ->
             isSquareAttackedByNonKing(square, color, occupancy)
-        } || MoveGen.KING_ATTACKS[kingSquares[color.idx()].value] and squares != 0L
+        } || MoveGen.KING_ATTACKS[kingSquares[color.idx].v] and squares != 0L
     }
 
     fun attackedSquaresOnBB(bb: Bitboard, attackingColor: Color): Bitboard {
-        var attackedSquares: Bitboard = MoveGen.KING_ATTACKS[kingSquares[attackingColor.idx()].value]
+        var attackedSquares: Bitboard = MoveGen.KING_ATTACKS[kingSquares[attackingColor.idx].v]
 
         Bitboards.forAllSquares(bb) { square ->
             if (isSquareAttackedByNonKing(square, attackingColor)) {
@@ -419,19 +419,19 @@ class Board {
 
         // checking if a piece on the square could attack an opponents piece of the same type
 
-        if (MoveGen.INDEXED_PAWN_ATTACKS[attackingColor.opponent().idx()][square.value]
-            and piecesBB[PieceType.PAWN.idx()] and colorsBB[attackingColor.idx()] != 0L)
+        if (MoveGen.INDEXED_PAWN_ATTACKS[attackingColor.opponent.idx][square.v]
+            and piecesBB[PieceType.PAWN.idx] and colorsBB[attackingColor.idx] != 0L)
             return true
-        if (Magic.getBishopAttacks(square.value, occupancy)
-            and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()])
-            and colorsBB[attackingColor.idx()] != 0L)
+        if (Magic.getBishopAttacks(square.v, occupancy)
+            and (piecesBB[PieceType.BISHOP.idx] or piecesBB[PieceType.QUEEN.idx])
+            and colorsBB[attackingColor.idx] != 0L)
             return true
-        if (Magic.getRookAttacks(square.value, occupancy)
-            and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()])
-            and colorsBB[attackingColor.idx()] != 0L)
+        if (Magic.getRookAttacks(square.v, occupancy)
+            and (piecesBB[PieceType.ROOK.idx] or piecesBB[PieceType.QUEEN.idx])
+            and colorsBB[attackingColor.idx] != 0L)
             return true
-        if (MoveGen.KNIGHT_ATTACKS[square.value]
-            and piecesBB[PieceType.KNIGHT.idx()] and colorsBB[attackingColor.idx()] != 0L)
+        if (MoveGen.KNIGHT_ATTACKS[square.v]
+            and piecesBB[PieceType.KNIGHT.idx] and colorsBB[attackingColor.idx] != 0L)
             return true
 
         return false
@@ -441,64 +441,64 @@ class Board {
      * returns bitboard of all pieces of attackingColor that currently attack this square (except en passant)
      */
     fun attackersTargeting(square: Square, attackingColor: Color): Bitboard {
-        val attackingPieces = colorsBB[attackingColor.idx()]
+        val attackingPieces = colorsBB[attackingColor.idx]
 
-        return ((MoveGen.INDEXED_PAWN_ATTACKS[attackingColor.opponent().idx()][square.value]
-                and piecesBB[PieceType.PAWN.idx()] and attackingPieces)
-                or (Magic.getBishopAttacks(square.value, occupiedBB)
-                and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()]) and attackingPieces)
-                or (Magic.getRookAttacks(square.value, occupiedBB)
-                and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()]) and attackingPieces)
-                or (MoveGen.KNIGHT_ATTACKS[square.value]
-                and piecesBB[PieceType.KNIGHT.idx()] and attackingPieces)
-                or (MoveGen.KING_ATTACKS[square.value]
-                and piecesBB[PieceType.KING.idx()] and attackingPieces))
+        return ((MoveGen.INDEXED_PAWN_ATTACKS[attackingColor.opponent.idx][square.v]
+                and piecesBB[PieceType.PAWN.idx] and attackingPieces)
+                or (Magic.getBishopAttacks(square.v, occupiedBB)
+                and (piecesBB[PieceType.BISHOP.idx] or piecesBB[PieceType.QUEEN.idx]) and attackingPieces)
+                or (Magic.getRookAttacks(square.v, occupiedBB)
+                and (piecesBB[PieceType.ROOK.idx] or piecesBB[PieceType.QUEEN.idx]) and attackingPieces)
+                or (MoveGen.KNIGHT_ATTACKS[square.v]
+                and piecesBB[PieceType.KNIGHT.idx] and attackingPieces)
+                or (MoveGen.KING_ATTACKS[square.v]
+                and piecesBB[PieceType.KING.idx] and attackingPieces))
     }
 
     fun moversTargeting(square: Square, movingColor: Color): Bitboard {
-        val movingPieces = colorsBB[movingColor.idx()]
+        val movingPieces = colorsBB[movingColor.idx]
 
         var pawn: Bitboard = 0
 
-        if (square.bb() and Bitboards.PAWN_MOVEABLE_AREAS[movingColor.idx()] != 0L) {
-            val singlePushPawnSrcSquare = Square(square.value + -MoveGen.PAWN_DIRECTIONS[movingColor.idx()])
-            if (pieces[singlePushPawnSrcSquare.value] == Piece(movingColor, PieceType.PAWN)) {
+        if (square.bb() and Bitboards.PAWN_MOVEABLE_AREAS[movingColor.idx] != 0L) {
+            val singlePushPawnSrcSquare = Square(square.v + -MoveGen.PAWN_DIRECTIONS[movingColor.idx])
+            if (pieces[singlePushPawnSrcSquare.v] == Piece(movingColor, PieceType.PAWN)) {
 
                 pawn = singlePushPawnSrcSquare.bb()
 
-            } else if (pieces[singlePushPawnSrcSquare.value] == Piece.NONE
-                && Bitboards.PAWN_DOUBLE_PUSH_TARGET_RANKS[movingColor.idx()] and square.bb() != 0L
+            } else if (pieces[singlePushPawnSrcSquare.v] == Piece.NONE
+                && Bitboards.PAWN_DOUBLE_PUSH_TARGET_RANKS[movingColor.idx] and square.bb() != 0L
             ) {
-                val doublePushPawnSrcSquare = Square(square.value + -MoveGen.PAWN_DIRECTIONS[movingColor.idx()] * 2)
+                val doublePushPawnSrcSquare = Square(square.v + -MoveGen.PAWN_DIRECTIONS[movingColor.idx] * 2)
 
-                if (pieces[doublePushPawnSrcSquare.value] == Piece(movingColor, PieceType.PAWN))
+                if (pieces[doublePushPawnSrcSquare.v] == Piece(movingColor, PieceType.PAWN))
                     pawn = doublePushPawnSrcSquare.bb()
             }
         }
 
-        return pawn or ((Magic.getBishopAttacks(square.value, occupiedBB)
-                and (piecesBB[PieceType.BISHOP.idx()] or piecesBB[PieceType.QUEEN.idx()]) and movingPieces)
-                or (Magic.getRookAttacks(square.value, occupiedBB)
-                and (piecesBB[PieceType.ROOK.idx()] or piecesBB[PieceType.QUEEN.idx()]) and movingPieces)
-                or (MoveGen.KNIGHT_ATTACKS[square.value] and piecesBB[PieceType.KNIGHT.idx()] and movingPieces)
-                or (MoveGen.KING_ATTACKS[square.value] and piecesBB[PieceType.KING.idx()] and movingPieces))
+        return pawn or ((Magic.getBishopAttacks(square.v, occupiedBB)
+                and (piecesBB[PieceType.BISHOP.idx] or piecesBB[PieceType.QUEEN.idx]) and movingPieces)
+                or (Magic.getRookAttacks(square.v, occupiedBB)
+                and (piecesBB[PieceType.ROOK.idx] or piecesBB[PieceType.QUEEN.idx]) and movingPieces)
+                or (MoveGen.KNIGHT_ATTACKS[square.v] and piecesBB[PieceType.KNIGHT.idx] and movingPieces)
+                or (MoveGen.KING_ATTACKS[square.v] and piecesBB[PieceType.KING.idx] and movingPieces))
     }
 
     fun attacksOf(square: Square, pieceType: PieceType, color: Color): Bitboard {
         return when (pieceType) {
-            PieceType.PAWN -> MoveGen.INDEXED_PAWN_ATTACKS[color.idx()][square.value]
-            PieceType.BISHOP -> Magic.getBishopAttacks(square.value, occupiedBB)
-            PieceType.KNIGHT -> MoveGen.KNIGHT_ATTACKS[square.value]
-            PieceType.ROOK -> Magic.getRookAttacks(square.value, occupiedBB)
-            PieceType.QUEEN -> (Magic.getBishopAttacks(square.value, occupiedBB)
-                    or Magic.getRookAttacks(square.value, occupiedBB))
-            PieceType.KING -> MoveGen.KING_ATTACKS[square.value]
+            PieceType.PAWN -> MoveGen.INDEXED_PAWN_ATTACKS[color.idx][square.v]
+            PieceType.BISHOP -> Magic.getBishopAttacks(square.v, occupiedBB)
+            PieceType.KNIGHT -> MoveGen.KNIGHT_ATTACKS[square.v]
+            PieceType.ROOK -> Magic.getRookAttacks(square.v, occupiedBB)
+            PieceType.QUEEN -> (Magic.getBishopAttacks(square.v, occupiedBB)
+                    or Magic.getRookAttacks(square.v, occupiedBB))
+            PieceType.KING -> MoveGen.KING_ATTACKS[square.v]
             else -> 0L // invalid piece
         }
     }
 
     fun isColorInCheck(color: Color): Boolean {
-        return areSquaresAttackedBy(kingSquares[color.idx()].bb(), color.opponent())
+        return areSquaresAttackedBy(kingSquares[color.idx].bb(), color.opponent)
     }
 
     fun naiveIsInCheckAfter(move: Move): Boolean {
@@ -518,15 +518,15 @@ class Board {
         }
 
         // king just can't walk onto an attacked square
-        if (pieces[move.src.value].type() == PieceType.KING) {
-            return (isSquareAttackedByNonKing(move.dst, turn.opponent())
-                    || MoveGen.KING_ATTACKS[kingSquares[turn.opponent().idx()].value] and move.dst.bb() != 0L)
+        if (pieces[move.src.v].type == PieceType.KING) {
+            return (isSquareAttackedByNonKing(move.dst, turn.opponent)
+                    || MoveGen.KING_ATTACKS[kingSquares[turn.opponent.idx].v] and move.dst.bb() != 0L)
         }
 
         // for all other moves we check if the piece is pinned and if it's moving away from the attack ray
-        return (kingProtectors[turn.idx()] and move.src.bb() != 0L // pinned
+        return (kingProtectors[turn.idx] and move.src.bb() != 0L // pinned
                 && Bitboards.line(move.src, move.dst)
-                and colorsBB[turn.idx()] and piecesBB[PieceType.KING.idx()] == 0L)
+                and colorsBB[turn.idx] and piecesBB[PieceType.KING.idx] == 0L)
     }
 
     fun putsOpponentInCheck(move: Move): Boolean {
@@ -538,15 +538,15 @@ class Board {
             return putsInCheck
         }
 
-        val opponentKingBB = colorsBB[turn.opponent().idx()] and piecesBB[PieceType.KING.idx()]
+        val opponentKingBB = colorsBB[turn.opponent.idx] and piecesBB[PieceType.KING.idx]
 
-        val movingPiece = pieces[move.src.value]
-        if (attacksOf(move.dst, movingPiece.type(), movingPiece.color()) and opponentKingBB != 0L) {
+        val movingPiece = pieces[move.src.v]
+        if (attacksOf(move.dst, movingPiece.type, movingPiece.color) and opponentKingBB != 0L) {
             // we're moving to a square where we're attacking the king, so it's check
             return true
         }
 
-        return (kingProtectors[turn.opponent().idx()] and move.src.bb() != 0L // piece was preventing check
+        return (kingProtectors[turn.opponent.idx] and move.src.bb() != 0L // piece was preventing check
             && Bitboards.line(move.src, move.dst) // and it's not moving on the line...
             and opponentKingBB == 0L) // ...that the opponent's king is on
     }
@@ -554,12 +554,12 @@ class Board {
     fun isPseudoLegalMove(move: Move): Boolean {
         if (move == Move.NULL_MOVE) return false
 
-        val piece = pieces[move.src.value]
+        val piece = pieces[move.src.v]
         if (piece == Piece.NONE) return false // can't move null piece
-        if (piece.color() != turn) return false // can't move opponent's piece
+        if (piece.color != turn) return false // can't move opponent's piece
 
         if (move.isEp) {
-            if (move.dst == epSquare && epSquare.bb() and MoveGen.INDEXED_PAWN_ATTACKS[turn.idx()][move.src.value] != 0L) {
+            if (move.dst == epSquare && epSquare.bb() and MoveGen.INDEXED_PAWN_ATTACKS[turn.idx][move.src.v] != 0L) {
                 return true // this is a legal ep move
             }
         }
@@ -567,25 +567,25 @@ class Board {
         if (move.castle != -1) {
             return (castlingRights and Square.CASTLING_ROOK_SQUARES[move.castle].bb() != 0L
                     && Bitboards.CASTLING_EMPTY[move.castle] and occupiedBB == 0L
-                    && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[move.castle], turn.opponent())
+                    && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[move.castle], turn.opponent)
                     && move.src == Square.KING_STARTS[move.castle / 2]
                     && move.dst == Square.CASTLING_TARGET_SQUARES[move.castle]
                     && move.capture == Piece.NONE)
         }
 
-        if (pieces[move.dst.value] != move.capture) return false // check if the right piece is captured
+        if (pieces[move.dst.v] != move.capture) return false // check if the right piece is captured
 
-        if (piece.type() == PieceType.PAWN && move.capture == Piece.NONE) {
-            val front = Square(move.src.value + MoveGen.PAWN_DIRECTIONS[turn.idx()])
+        if (piece.type == PieceType.PAWN && move.capture == Piece.NONE) {
+            val front = Square(move.src.v + MoveGen.PAWN_DIRECTIONS[turn.idx])
             if (move.dst == front) return true // this is just a normal pawn push
 
             if (move.src.rank != turn.pawnStartingRank()) return false // can't do double push if not on starting rank
-            if (pieces[front.value] != Piece.NONE) return false // can't do double push if there's something in the way
-            val doublePushSquare = Square(move.src.value + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx()])
+            if (pieces[front.v] != Piece.NONE) return false // can't do double push if there's something in the way
+            val doublePushSquare = Square(move.src.v + 2 * MoveGen.PAWN_DIRECTIONS[turn.idx])
             return move.dst == doublePushSquare // last possible pawn non-capture is double push, only need to check correct dst square now
         } else {
-            val validTargetSquares = (attacksOf(move.src, piece.type(), piece.color())
-                    and colorsBB[turn.idx()].inv())
+            val validTargetSquares = (attacksOf(move.src, piece.type, piece.color)
+                    and colorsBB[turn.idx].inv())
 
             return validTargetSquares and move.dst.bb() != 0L
         }
@@ -673,8 +673,8 @@ class Board {
         val evalWdl16 = java.lang.Float.floatToFloat16(evalWdl)
         val resultWdl16 = java.lang.Float.floatToFloat16(resultWdl)
 
-        val wKingSq = kingSquares[Color.WHITE.idx()]
-        val bKingSq = kingSquares[Color.BLACK.idx()]
+        val wKingSq = kingSquares[Color.WHITE.idx]
+        val bKingSq = kingSquares[Color.BLACK.idx]
 
         var nibbleCount = 0
         val piecesBuffer: IntArray = IntArray(32)
@@ -684,7 +684,7 @@ class Board {
         for (sq in 0..63) {
             val piece = pieces[sq]
 
-            if (piece == Piece.NONE || piece.type() == PieceType.KING) {
+            if (piece == Piece.NONE || piece.type == PieceType.KING) {
                 emptyCount++
 
                 if (emptyCount == 6) {
@@ -706,7 +706,7 @@ class Board {
                 }
 
                 piecesBuffer[nibbleCount / 2] = piecesBuffer[nibbleCount / 2] or (
-                        (piece.color().value or PieceType.BISHOP_KNIGHT_SWAP_MAP[piece.type().idx()]) shl if ((nibbleCount and 1) == 0) 4 else 0
+                        (piece.color.v or PieceType.BISHOP_KNIGHT_SWAP_MAP[piece.type.idx]) shl if ((nibbleCount and 1) == 0) 4 else 0
                 )
                 nibbleCount++
 
@@ -729,8 +729,8 @@ class Board {
         binPos[2] = ((resultWdl16.toInt() and 0xFFFF) ushr 8).toByte()
         binPos[3] = (resultWdl16.toInt() and 0xFF).toByte()
 
-        binPos[4] = ((turn.idx() shl 6) or wKingSq.value and 0x3F).toByte()
-        binPos[5] = (bKingSq.value and 0x3F).toByte()
+        binPos[4] = ((turn.idx shl 6) or wKingSq.v and 0x3F).toByte()
+        binPos[5] = (bKingSq.v and 0x3F).toByte()
 
         binPos[6] = nibbleCount.toByte()
 

@@ -5,9 +5,7 @@ import java.io.File
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.exp
-import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sign
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -92,7 +90,7 @@ class Engine {
             val move = moveGen.nextMove() ?: break
 
             // delta pruning
-            if (!inCheck && staticEval + PieceType.VALUES[move.capture.type().idx()] + 210 <= alpha) {
+            if (!inCheck && staticEval + PieceType.VALUES[move.capture.type.idx] + 210 <= alpha) {
                 continue
             }
 
@@ -254,7 +252,7 @@ class Engine {
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
             ) {
-                val historyIndex = position.turn.opponent().idx() * 64 * 64 + move.src.value * 64 + move.dst.value
+                val historyIndex = position.turn.opponent.idx * 64 * 64 + move.src.v * 64 + move.dst.v
                 reduction = min(1 + ((remainingDepth - 2 + if (historyTable[historyIndex] <= 0) 1 else -1) / 2), remainingDepth - 1)
             }
 
@@ -492,7 +490,7 @@ class Engine {
 
     fun updateHistory(color: Color, from: Square, to: Square, bonus: Int) {
         val clampedBonus = bonus.coerceIn(-HISTORY_MAX, HISTORY_MAX)
-        val index = color.idx() * 64 * 64 + from.value * 64 + to.value
+        val index = color.idx * 64 * 64 + from.v * 64 + to.v
 
         historyTable[index] += clampedBonus - historyTable[index] * abs(clampedBonus) / HISTORY_MAX
     }

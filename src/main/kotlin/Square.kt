@@ -3,15 +3,15 @@ package party.elias
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class Square(val value: Int) {
+value class Square(val v: Int) {
     constructor(rank: Int, file: Int) : this(rank * 8 + file)
-    val rank: Int get() = value ushr 3
-    val file: Int get() = value and 7
-    val mirror: Square get() = Square(value xor 0b111000)
+    val rank: Int get() = v ushr 3
+    val file: Int get() = v and 7
+    val mirror: Square get() = Square(v xor 0b111000)
     val parity: Int get() = (rank + file) % 2 // 0 means dark square, 1 means light square
 
     fun bb(): Bitboard {
-        return 1L shl value
+        return 1L shl v
     }
 
     fun toUci(): String {
@@ -21,7 +21,7 @@ value class Square(val value: Int) {
     }
 
     fun enPassantActualCapture(): Square {
-        return if (value < 32) Square(value + 8) else Square(value - 8)
+        return if (v < 32) Square(v + 8) else Square(v - 8)
     }
 
     override fun toString(): String {
@@ -64,5 +64,15 @@ value class Square(val value: Int) {
         val KING_STARTS: Array<Square> = arrayOf(
             E1, E8
         )
+    }
+}
+
+@JvmInline
+value class SquareArray(val array: IntArray) {
+    constructor(size: Int) : this(IntArray(size) { -1 })
+
+    operator fun get(index: Int): Square = Square(array[index])
+    operator fun set(index: Int, square: Square) {
+        array[index] = square.v
     }
 }

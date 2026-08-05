@@ -9,8 +9,8 @@ data class Move(
     val castle: Int = -1
 ) {
     init {
-        assert(src.value in 0..63)
-        assert(dst.value in 0..63)
+        assert(src.v in 0..63)
+        assert(dst.v in 0..63)
     }
 
     fun toUci(): String {
@@ -38,18 +38,18 @@ data class Move(
         fun fromUci(uciMove: String, position: Board): Move {
             val src = Square.parseUci(uciMove.substring(0..1))
             val dst = Square.parseUci(uciMove.substring(2..3))
-            val promotion: PieceType = if (uciMove.length > 4) Piece.fromSymbol(uciMove[4]).type() else PieceType.NONE
+            val promotion: PieceType = if (uciMove.length > 4) Piece.fromSymbol(uciMove[4]).type else PieceType.NONE
 
-            val movingPiece = position.pieces[src.value]
+            val movingPiece = position.pieces[src.v]
 
-            val isEp = dst == position.epSquare && movingPiece.type() == PieceType.PAWN
-            val capture = position.pieces[(if (isEp) dst.enPassantActualCapture() else dst).value]
+            val isEp = dst == position.epSquare && movingPiece.type == PieceType.PAWN
+            val capture = position.pieces[(if (isEp) dst.enPassantActualCapture() else dst).v]
 
             var castle = -1
 
             for (i in 0..3) {
                 if (src == Square.KING_STARTS[i / 2]
-                    && position.pieces[src.value].type() == PieceType.KING
+                    && position.pieces[src.v].type == PieceType.KING
                     && dst == Square.CASTLING_TARGET_SQUARES[i]
                 ) {
                     castle = i

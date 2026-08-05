@@ -3,12 +3,12 @@ package party.elias
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class Color(val value: Int) { // WHITE = 0b1000, BLACK = 0b0000
-    fun opponent(): Color = Color(value.inv() and 8)
-    fun idx(): Int = value ushr 3
+value class Color(val v: Int) { // WHITE = 0b1000, BLACK = 0b0000
+    val opponent: Color get() = Color(v.inv() and 8)
+    val idx: Int get() = v ushr 3
+
     fun backRank(): Int = if (this == BLACK) 7 else 0
     fun pawnStartingRank(): Int = if (this == BLACK) 6 else 1
-    fun scoreFactor(): Int = if (this == BLACK) -1 else 1
 
     override fun toString(): String {
         return when (this) {
@@ -25,14 +25,14 @@ value class Color(val value: Int) { // WHITE = 0b1000, BLACK = 0b0000
 }
 
 @JvmInline
-value class PieceType(val value: Int) { // ...0ttt
-    val name: String get() = NAMES[value]
-    fun idx(): Int = value
+value class PieceType(val v: Int) { // ...0ttt
+    val name: String get() = NAMES[v]
+    val idx: Int get() = v
 
     fun isSliding(): Boolean {
-        return (value == BISHOP.idx()
-                || value == ROOK.idx()
-                || value == QUEEN.idx())
+        return (v == BISHOP.idx
+                || v == ROOK.idx
+                || v == QUEEN.idx)
     }
 
     companion object {
@@ -49,26 +49,26 @@ value class PieceType(val value: Int) { // ...0ttt
 
         val PROMOTABLE_TO: Array<PieceType> = arrayOf(QUEEN, KNIGHT, ROOK, BISHOP)
 
-        val SLIDING_PIECES: IntArray = intArrayOf(BISHOP.idx(), ROOK.idx(), QUEEN.idx())
+        val SLIDING_PIECES: IntArray = intArrayOf(BISHOP.idx, ROOK.idx, QUEEN.idx)
 
         val VALUES: IntArray = intArrayOf(100, 300, 300, 500, 1000, 400)
 
         val BISHOP_KNIGHT_SWAP_MAP: IntArray = intArrayOf(
-            PAWN.idx(), KNIGHT.idx(), BISHOP.idx(), ROOK.idx(), QUEEN.idx(), KING.idx()
+            PAWN.idx, KNIGHT.idx, BISHOP.idx, ROOK.idx, QUEEN.idx, KING.idx
         )
 
         val BY_VALUE_ASC: IntArray = intArrayOf(
-            PAWN.idx(), KNIGHT.idx(), BISHOP.idx(), ROOK.idx(), QUEEN.idx(), KING.idx()
+            PAWN.idx, KNIGHT.idx, BISHOP.idx, ROOK.idx, QUEEN.idx, KING.idx
         )
     }
 }
 
 @JvmInline
-value class Piece(val value: Int) { // ...cttt, t = type, c = color
-    constructor(color: Color, pieceType: PieceType) : this(color.value or pieceType.value)
+value class Piece(val v: Int) { // ...cttt, t = type, c = color
+    constructor(color: Color, pieceType: PieceType) : this(color.v or pieceType.v)
 
-    fun type(): PieceType = PieceType(value and 7)
-    fun color(): Color = Color(value and 8)
+    val type: PieceType get() = PieceType(v and 7)
+    val color: Color get() = Color(v and 8)
 
     override fun toString(): String {
         return "${SYMBOL_MAP[this]}"
@@ -105,10 +105,10 @@ value class Piece(val value: Int) { // ...cttt, t = type, c = color
 
 @JvmInline
 value class PieceArray(val array: IntArray) {
-    constructor() : this(IntArray(64) { Piece.NONE.value })
+    constructor() : this(IntArray(64) { Piece.NONE.v })
 
     operator fun get(index: Int): Piece = Piece(array[index])
     operator fun set(index: Int, piece: Piece) {
-        array[index] = piece.value
+        array[index] = piece.v
     }
 }

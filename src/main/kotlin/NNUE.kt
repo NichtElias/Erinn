@@ -71,49 +71,18 @@ object NNUE {
         return outOut / Q_SCALE_OTHER * 512 / Q_SCALE_ACTIVATION
     }
 
-    fun whiteFeature(piece: Piece, square: Square, kingSquare: Square): Int {
-        val hm = ((kingSquare.value and 0b000100) ushr 2) * 0b000111
+    /**
+     * Calculates the feature index.
+     * @param square the square the piece is on, needs to be mirrored for black's perspective
+     * @param kingSquare the square the own king is on, needs to be mirrored for black's perspective
+     * @param relativePieceColor is 0 for own pieces and 1 for opponent's pieces
+     */
+    fun feature(pieceType: PieceType, square: Square, kingSquare: Square, relativePieceColor: Int): Int {
+        val hm = ((kingSquare.v and 0b000100) ushr 2) * 0b000111
 
-//        var hmKingSquare = kingSquare.value xor hm
-//        // king square gets packed into 5 bits, as the highest bit in the hm king square's file is always 0,
-//        // so we shift rank over by one
-//        hmKingSquare = ((hmKingSquare and 0b111000) ushr 1) or (hmKingSquare and 0b000011)
-//
-//        return (piece.type().idx() * 2 * 32 * 64
-//                + (if (piece.color() == Color.WHITE) 0 else 1) * 32 * 64
-//                + hmKingSquare * 64
-//                + (square.value xor hm))
-
-//        return (piece.type().idx() * 2 * 64
-//                + (if (piece.color() == Color.WHITE) 0 else 1) * 64
-//                + square.value)
-
-        return (piece.type().idx() * 2 * 8 * 64
-                + (if (piece.color() == Color.WHITE) 0 else 1) * 8 * 64
-                + KING_BUCKETS[kingSquare.value] * 64
-                + (square.value xor hm))
-    }
-
-    fun blackFeature(piece: Piece, square: Square, kingSquare: Square): Int {
-        val hm = ((kingSquare.value and 0b000100) ushr 2) * 0b000111
-
-//        var hmKingSquare = kingSquare.mirror.value xor hm
-//        // king square gets packed into 5 bits, as the highest bit in the hm king square's file is always 0,
-//        // so we shift rank over by one
-//        hmKingSquare = ((hmKingSquare and 0b111000) ushr 1) or (hmKingSquare and 0b000011)
-//
-//        return (piece.type().idx() * 2 * 32 * 64
-//                + (if (piece.color() == Color.BLACK) 0 else 1) * 32 * 64
-//                + hmKingSquare * 64
-//                + (square.mirror.value xor hm))
-
-//        return (piece.type().idx() * 2 * 64
-//                + (if (piece.color() == Color.BLACK) 0 else 1) * 64
-//                + square.mirror.value)
-
-        return (piece.type().idx() * 2 * 8 * 64
-                + (if (piece.color() == Color.BLACK) 0 else 1) * 8 * 64
-                + KING_BUCKETS[kingSquare.mirror.value] * 64
-                + (square.mirror.value xor hm))
+        return (pieceType.idx * 2 * 8 * 64
+                + relativePieceColor * 8 * 64
+                + KING_BUCKETS[kingSquare.v] * 64
+                + (square.v xor hm))
     }
 }

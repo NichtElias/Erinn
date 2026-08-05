@@ -26,10 +26,10 @@ value class CompactMove(val v: Int) {
         fun fromMove(move: Move): CompactMove {
             var v = 0
 
-            v = v or (move.src.value and 0b111111)
-            v = v or ((move.dst.value and 0b111111) shl 6)
-            v = v or ((move.capture.value and 0b1111) shl 12)
-            v = v or ((move.promotion.value and 0b111) shl 16)
+            v = v or (move.src.v and 0b111111)
+            v = v or ((move.dst.v and 0b111111) shl 6)
+            v = v or ((move.capture.v and 0b1111) shl 12)
+            v = v or ((move.promotion.v and 0b111) shl 16)
             v = v or (if (move.isEp) 0b100 shl 19 else ((move.castle and 0b111) shl 19))
 
             return CompactMove(v)
