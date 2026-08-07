@@ -1,7 +1,8 @@
-package party.elias
+package party.elias.erinn
 
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.text.iterator
 
 class Board {
     val piecesBB: BitboardArray = BitboardArray(6)

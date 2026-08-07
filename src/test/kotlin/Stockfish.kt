@@ -1,5 +1,5 @@
-import party.elias.Move
-import party.elias.uci.uciPositionCmd
+import party.elias.erinn.Move
+import party.elias.erinn.uci.uciPositionCmd
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader

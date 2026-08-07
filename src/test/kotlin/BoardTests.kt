@@ -1,8 +1,6 @@
-import party.elias.Board
-import party.elias.Engine
-import party.elias.Move
-import party.elias.Score
-import party.elias.Square
+import party.elias.erinn.Board
+import party.elias.erinn.Engine
+import party.elias.erinn.Move
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

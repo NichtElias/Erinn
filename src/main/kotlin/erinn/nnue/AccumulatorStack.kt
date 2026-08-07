@@ -1,4 +1,12 @@
-package party.elias
+package party.elias.erinn.nnue
+
+import party.elias.erinn.Board
+import party.elias.erinn.Color
+import party.elias.erinn.Engine
+import party.elias.erinn.Move
+import party.elias.erinn.Piece
+import party.elias.erinn.PieceType
+import party.elias.erinn.Square
 
 class AccumulatorStack {
     val stack: Array<AccPair> = Array(Engine.MAX_SEARCH_PLY) { AccPair() }

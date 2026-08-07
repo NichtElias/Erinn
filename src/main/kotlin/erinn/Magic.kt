@@ -1,4 +1,4 @@
-package party.elias
+package party.elias.erinn
 
 fun Long.toIntExact(): Int {
     if (this !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {

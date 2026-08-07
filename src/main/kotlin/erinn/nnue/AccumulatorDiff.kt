@@ -1,4 +1,4 @@
-package party.elias
+package party.elias.erinn.nnue
 
 class AccumulatorDiff {
 

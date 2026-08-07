@@ -11,10 +11,7 @@ fastchess-config.json
 UHO_Lichess_4852_v1.epd
 
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
+.idea
 *.iws
 *.iml
 *.ipr

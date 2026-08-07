@@ -1,5 +1,8 @@
-package party.elias
+package party.elias.erinn.nnue
 
+import party.elias.erinn.PieceType
+import party.elias.erinn.Score
+import party.elias.erinn.Square
 import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.min

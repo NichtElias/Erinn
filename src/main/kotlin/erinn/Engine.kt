@@ -1,6 +1,8 @@
-package party.elias
+package party.elias.erinn
 
-import party.elias.uci.sendUciInfo
+import party.elias.erinn.nnue.AccumulatorStack
+import party.elias.erinn.nnue.NNUE
+import party.elias.erinn.uci.sendUciInfo
 import java.io.File
 import kotlin.concurrent.Volatile
 import kotlin.math.abs

@@ -1,4 +1,4 @@
-package party.elias
+package party.elias.erinn
 
 @JvmInline
 value class CompactMove(val v: Int) {

@@ -27,7 +27,7 @@ tasks.test {
 tasks.shadowJar {
     archiveClassifier.set("")
     manifest {
-        attributes["Main-Class"] = "party.elias.MainKt"
+        attributes["Main-Class"] = "party.elias.erinn.MainKt"
     }
 }
 
@@ -37,7 +37,7 @@ tasks.register<JavaExec>("run") {
 
     classpath(sourceSets.main.get().runtimeClasspath)
 
-    mainClass.set("party.elias.MainKt")
+    mainClass.set("party.elias.erinn.MainKt")
 
     enableAssertions = true
 

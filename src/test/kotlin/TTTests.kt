@@ -1,6 +1,6 @@
-import party.elias.Board
-import party.elias.Move
-import party.elias.TranspositionTable
+import party.elias.erinn.Board
+import party.elias.erinn.Move
+import party.elias.erinn.TranspositionTable
 import kotlin.math.min
 import kotlin.random.Random
 import kotlin.test.Test

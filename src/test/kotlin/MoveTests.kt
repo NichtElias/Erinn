@@ -1,8 +1,8 @@
-import party.elias.Board
-import party.elias.Move
-import party.elias.Piece
-import party.elias.PieceType
-import party.elias.Square
+import party.elias.erinn.Board
+import party.elias.erinn.Move
+import party.elias.erinn.Piece
+import party.elias.erinn.PieceType
+import party.elias.erinn.Square
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

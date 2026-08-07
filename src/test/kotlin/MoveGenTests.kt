@@ -1,6 +1,6 @@
-import party.elias.Board
-import party.elias.Engine
-import party.elias.Move
+import party.elias.erinn.Board
+import party.elias.erinn.Engine
+import party.elias.erinn.Move
 import kotlin.test.Test
 
 class MoveGenTests {

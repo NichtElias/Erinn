@@ -1,4 +1,4 @@
-package party.elias
+package party.elias.erinn
 
 class MoveGen(val position: Board, val engine: Engine) {
     var stage: Stage = Stage.HASH

@@ -1,4 +1,4 @@
-package party.elias
+package party.elias.erinn
 
 import kotlin.math.abs
 import kotlin.math.sign

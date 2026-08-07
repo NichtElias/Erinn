@@ -1,4 +1,4 @@
-package party.elias
+package party.elias.erinn
 
 import kotlin.jvm.JvmInline
 

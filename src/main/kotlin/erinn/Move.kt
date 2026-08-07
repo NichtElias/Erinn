@@ -1,4 +1,4 @@
-package party.elias
+package party.elias.erinn
 
 data class Move(
     val src: Square,
