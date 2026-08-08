@@ -19,7 +19,9 @@ class BoardTests {
                 engine.moveGens[m].begin(inCheck = engine.position.isColorInCheck(engine.position.turn))
 
                 while (true) {
-                    val move = engine.moveGens[0].nextMove() ?: break
+                    val move = engine.moveGens[0].nextMove()
+                    if (move.isNull()) break
+
                     allMoves.add(move)
                 }
 
@@ -45,7 +47,9 @@ class BoardTests {
             engine.moveGens[0].begin(inCheck = b.isColorInCheck(b.turn))
 
             while (true) {
-                val move = engine.moveGens[0].nextMove() ?: break
+                val move = engine.moveGens[0].nextMove()
+                if (move.isNull()) break
+
                 allMoves.add(move)
             }
 
@@ -62,7 +66,9 @@ class BoardTests {
                 var moveWasGenerated = false
                 engine.moveGens[0].begin(inCheck = b.isColorInCheck(b.turn))
                 while (true) {
-                    val move = engine.moveGens[0].nextMove() ?: break
+                    val move = engine.moveGens[0].nextMove()
+                    if (move.isNull()) break
+
                     if (move == sampleMove) {
                         moveWasGenerated = true
                         break
@@ -83,7 +89,8 @@ class BoardTests {
             engine.moveGens[0].begin(inCheck = b.isColorInCheck(b.turn))
 
             while (true) {
-                val move = engine.moveGens[0].nextMove() ?: break
+                val move = engine.moveGens[0].nextMove()
+                if (move.isNull()) break
 
                 engine.position.doMove(move, Engine.MAX_SEARCH_PLY)
                 val putsInCheck = engine.position.isColorInCheck(engine.position.turn)

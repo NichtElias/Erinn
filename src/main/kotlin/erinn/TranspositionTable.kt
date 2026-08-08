@@ -12,9 +12,9 @@ class TranspositionTable(val capacity: Int) {
         val index = (key.toULong() % capacity.toUInt()).toInt() * 2
 
         val newValue = TTValue(
-            (if (boundType == BOUND_UPPER && bestMove == Move.NULL_MOVE)
-                    (if (entries[index] == key) TTValue(entries[index + 1]).bestMove else Move.NULL_MOVE.toCompact())
-            else bestMove.toCompact()),
+            (if (boundType == BOUND_UPPER && bestMove.isNull())
+                    (if (entries[index] == key) TTValue(entries[index + 1]).bestMove else Move.NULL_MOVE)
+            else bestMove),
             adjustScore(score, perspective, plyFromRoot),
             draft,
             boundType
@@ -118,13 +118,13 @@ class TranspositionTable(val capacity: Int) {
 
     @JvmInline
     value class TTValue(val v: Long) {
-        val bestMove: CompactMove get() = CompactMove((v and 0x3FFFFF).toInt())
+        val bestMove: Move get() = Move((v and 0x3FFFFF).toInt())
         val score: Score get() = ((v ushr 22) and 0xFFFF).toShort().toInt()
         val draft: Short get() = ((v ushr 38) and 0xFF).toShort()
         val boundType: BoundType get() = ((v ushr 46) and 0b11).toShort()
 
         constructor(
-            bestMove: CompactMove, score: Score, draft: Int, boundType: BoundType
+            bestMove: Move, score: Score, draft: Int, boundType: BoundType
         ) : this(
             (bestMove.v.toLong() and 0x3FFFFF) // +22 bits
             or ((score and 0xFFFF).toLong() shl 22) // +16 bits

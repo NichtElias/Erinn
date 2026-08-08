@@ -9,13 +9,13 @@ class MoveGen(val position: Board, val engine: Engine) {
     var currentMoveContainer: ScoredMoveContainer = quietMoves
     var finished: Boolean = false
 
-    var hashMove: Move? = null
+    var hashMove: Move = Move.NULL_MOVE
     var killerMoves: Array<Move>? = null
     var genQuiets: Boolean = true
     var inCheck: Boolean = false
     var doSEE: Boolean = false
 
-    fun begin(genQuiets: Boolean = true, inCheck: Boolean = false, hashMove: Move? = null, killerMoves: Array<Move>? = null, doSEE: Boolean = false) {
+    fun begin(genQuiets: Boolean = true, inCheck: Boolean = false, hashMove: Move = Move.NULL_MOVE, killerMoves: Array<Move>? = null, doSEE: Boolean = false) {
         stage = Stage.HASH
 
         quietMoves.reset()
@@ -33,16 +33,16 @@ class MoveGen(val position: Board, val engine: Engine) {
         if (inCheck) stage = Stage.EVASION_HASH
     }
 
-    fun nextMove(): Move? {
+    fun nextMove(): Move {
         while (true) {
-            if (finished) return null
+            if (finished) return Move.NULL_MOVE
 
             // if there's still at least one buffered move, return it
             if (currentMoveContainer.hasNext()) {
 
                 val move = currentMoveContainer.selectMove(
                     stage.sorted && (!(stage == Stage.GOOD_CAPTURES || stage == Stage.BAD_CAPTURES) || doSEE)
-                ).toMove()
+                )
 
                 if (!currentMoveContainer.hasNext()) {
                     // if it was the last one, go to next stage
@@ -74,7 +74,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                             val singlePushMove = Move(src, front, Piece.NONE)
                             if (!position.putsCurrentPlayerInCheck(singlePushMove))
                                 singlePushMove.forPromotionVariants { m ->
-                                    quietMoves.add(m.toCompact())
+                                    quietMoves.add(m)
                                 }
                         }
                     }
@@ -102,7 +102,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                                     if (!position.putsCurrentPlayerInCheck(epMove)) {
 
                                         (if (!doSEE || position.seeWithThreshold(epMove, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
-                                            epMove.toCompact()
+                                            epMove
                                         )
                                     }
                                 }
@@ -120,13 +120,13 @@ class MoveGen(val position: Board, val engine: Engine) {
                                             captureMove.forPromotionVariants { m ->
 
                                                 (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
-                                                    m.toCompact()
+                                                    m
                                                 )
                                             }
                                         } else {
 
                                             (if (!doSEE || position.seeWithThreshold(captureMove, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
-                                                captureMove.toCompact()
+                                                captureMove
                                             )
                                         }
                                     }
@@ -145,7 +145,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                     for (killer in killerMoves) {
                         if (killer != Move.NULL_MOVE && position.isLegalMove(killer)) {
 
-                            quietMoves.add(killer.toCompact())
+                            quietMoves.add(killer)
                         }
                     }
                 }
@@ -161,7 +161,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                         ) { // cannot be illegal because we already check if king will move into check
                             val castlingMove = Move(Square.KING_STARTS[i / 2], Square.CASTLING_TARGET_SQUARES[i], Piece.NONE, castle = i)
 
-                            quietMoves.add(castlingMove.toCompact())
+                            quietMoves.add(castlingMove)
                         }
                     }
 
@@ -177,7 +177,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                                     val idx = position.turn.idx * 64 * 64 + move.src.v * 64 + move.dst.v
 
                                     quietMoves.addWithScore(
-                                        move.toCompact(),
+                                        move,
                                         engine.historyTable[idx].toFloat()
                                     )
                                 }
@@ -200,7 +200,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                                     val idx = position.turn.idx * 64 * 64 + doublePushMove.src.v * 64 + doublePushMove.dst.v
 
                                     quietMoves.addWithScore(
-                                        doublePushMove.toCompact(),
+                                        doublePushMove,
                                         engine.historyTable[idx].toFloat()
                                     )
                                 }
@@ -211,7 +211,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                                 val idx = position.turn.idx * 64 * 64 + singlePushMove.src.v * 64 + singlePushMove.dst.v
 
                                 quietMoves.addWithScore(
-                                    singlePushMove.toCompact(),
+                                    singlePushMove,
                                     engine.historyTable[idx].toFloat()
                                 )
                             }
@@ -265,7 +265,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                     // can only use non-pinned pieces
                     if (src.bb() and position.kingProtectors[position.turn.idx] == 0L) {
                         currentMoveContainer.add(
-                            Move(src, position.epSquare, position.pieces[checkerSq.v], isEp = true).toCompact()
+                            Move(src, position.epSquare, position.pieces[checkerSq.v], isEp = true)
                         )
                     }
                 }
@@ -283,10 +283,10 @@ class MoveGen(val position: Board, val engine: Engine) {
                     if (position.turn.opponent.pawnStartingRank() == src.rank // our pawn moving from opponent's starting rank, means we reach the last rank
                         && position.pieces[src.v].type == PieceType.PAWN) {
                         captureMove.forPromotionVariants { m ->
-                            currentMoveContainer.add(m.toCompact())
+                            currentMoveContainer.add(m)
                         }
                     } else {
-                        currentMoveContainer.add(captureMove.toCompact())
+                        currentMoveContainer.add(captureMove)
                     }
                 }
             }
@@ -304,10 +304,10 @@ class MoveGen(val position: Board, val engine: Engine) {
                             if (position.turn.opponent.pawnStartingRank() == src.rank // our pawn moving from opponent's starting rank, means we reach the last rank
                                 && position.pieces[src.v].type == PieceType.PAWN) {
                                 interposeMove.forPromotionVariants { m ->
-                                    currentMoveContainer.add(m.toCompact())
+                                    currentMoveContainer.add(m)
                                 }
                             } else {
-                                currentMoveContainer.add(interposeMove.toCompact())
+                                currentMoveContainer.add(interposeMove)
                             }
                         }
                     }
@@ -327,7 +327,7 @@ class MoveGen(val position: Board, val engine: Engine) {
                     position.occupiedBB and kingSquare.bb().inv()
                 )
             )
-                currentMoveContainer.add(Move(kingSquare, dst, position.pieces[dst.v]).toCompact())
+                currentMoveContainer.add(Move(kingSquare, dst, position.pieces[dst.v]))
         }
     }
 
@@ -460,12 +460,12 @@ class MoveGen(val position: Board, val engine: Engine) {
     }
 
     class ScoredMoveContainer(
-        val moves: CompactMoveArray,
+        val moves: MoveArray,
         val scores: FloatArray,
         var size: Int,
         var index: Int
     ) {
-        constructor(capacity: Int) : this(CompactMoveArray(capacity), FloatArray(capacity), 0, 0)
+        constructor(capacity: Int) : this(MoveArray(capacity), FloatArray(capacity), 0, 0)
 
         fun reset() {
             size = 0
@@ -480,16 +480,16 @@ class MoveGen(val position: Board, val engine: Engine) {
             return size == 0
         }
 
-        fun add(move: CompactMove) {
+        fun add(move: Move) {
             moves[size++] = move
         }
 
-        fun addWithScore(move: CompactMove, score: Float) {
+        fun addWithScore(move: Move, score: Float) {
             scores[size] = score
             moves[size++] = move
         }
 
-        fun selectMove(sort: Boolean): CompactMove {
+        fun selectMove(sort: Boolean): Move {
             if (sort) {
                 // find best remaining move
                 var maxScoreIndex: Int = index

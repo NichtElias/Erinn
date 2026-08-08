@@ -13,7 +13,6 @@ import party.elias.erinn.Move
 import party.elias.erinn.nnue.NNUE
 import party.elias.erinn.Score
 import java.io.File
-import kotlin.collections.isEmpty
 import kotlin.collections.iterator
 import kotlin.math.abs
 import kotlin.math.max
@@ -217,7 +216,7 @@ fun run() {
 
 }
 
-fun uciPositionCmd(fen: String, vararg moves: Move): String {
+fun uciPositionCmd(fen: String, moves: List<Move>): String {
     val sb = StringBuilder()
 
     for (move in moves) {

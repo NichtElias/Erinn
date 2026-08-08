@@ -37,7 +37,7 @@ class Engine {
 
     val historyTable: IntArray = IntArray(2 * 64 * 64)
 
-    val pvTable: CompactMoveArray = CompactMoveArray(MAX_SEARCH_PLY * MAX_SEARCH_PLY)
+    val pvTable: MoveArray = MoveArray(MAX_SEARCH_PLY * MAX_SEARCH_PLY)
     val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
 
     val accStack: AccumulatorStack = AccumulatorStack()
@@ -89,7 +89,8 @@ class Engine {
         moveGen.begin(genQuiets = false, inCheck = inCheck)
 
         while (true) {
-            val move = moveGen.nextMove() ?: break
+            val move = moveGen.nextMove()
+            if (move.isNull()) break
 
             // delta pruning
             if (!inCheck && staticEval + PieceType.VALUES[move.capture.type.idx] + 210 <= alpha) {
@@ -142,7 +143,7 @@ class Engine {
             val adjustedScore = ttValue.getAdjustedScore(position.turn, plyFromRoot)
             when (ttValue.boundType) {
                 TranspositionTable.BOUND_EXACT ->
-                    return Result(ttValue.bestMove.toMove(), adjustedScore)
+                    return Result(ttValue.bestMove, adjustedScore)
 
                 TranspositionTable.BOUND_LOWER -> if (adjustedScore >= beta)
                     return Result(Move.NULL_MOVE, adjustedScore)
@@ -223,10 +224,11 @@ class Engine {
         var alphaRaised = false
 
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin(inCheck = inCheck, hashMove = ttValue.bestMove.toMove(), killerMoves = killers[plyFromRoot], doSEE = remainingDepth > 2)
+        moveGen.begin(inCheck = inCheck, hashMove = ttValue.bestMove, killerMoves = killers[plyFromRoot], doSEE = remainingDepth > 2)
 
         while (true) {
-            val move = moveGen.nextMove() ?: break
+            val move = moveGen.nextMove()
+            if (move.isNull()) break
             moveCount++
 
             if (debugMode && moveCount == 1 && (move == killers[plyFromRoot][0] || move == killers[plyFromRoot][1])) {
@@ -291,7 +293,7 @@ class Engine {
                     bestMove = move
 
                     if (isPV) {
-                        pvTable[plyFromRoot * MAX_SEARCH_PLY + 0] = move.toCompact()
+                        pvTable[plyFromRoot * MAX_SEARCH_PLY + 0] = move
                         System.arraycopy(
                             pvTable.array, (plyFromRoot + 1) * MAX_SEARCH_PLY,
                             pvTable.array, plyFromRoot * MAX_SEARCH_PLY + 1,
@@ -310,7 +312,7 @@ class Engine {
                     updateHistory(position.turn, move.src, move.dst, remainingDepth * remainingDepth)
 
                     // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
-                    val compactMove = move.toCompact()
+                    val compactMove = move
                     for (i in 0..<moveGen.quietMoves.size) {
                         if (moveGen.quietMoves.moves[i] == compactMove) {
                             break
@@ -451,7 +453,7 @@ class Engine {
             totalSearchedNodes++
             if (ttValue.v != 0L) totalTTHits++
             if (firstMoveWasBestMove) {
-                if (ttValue.v != 0L && ttValue.bestMove == bestMove.toCompact()) {
+                if (ttValue.v != 0L && ttValue.bestMove == bestMove) {
                     ttBestMoveCount++
                 } else if (bestMove.capture != Piece.NONE) {
                     captureBestMoveCount++
@@ -517,7 +519,8 @@ class Engine {
         moveGen.begin(inCheck = position.isColorInCheck(position.turn))
 
         while (true) {
-            val move = moveGen.nextMove() ?: break
+            val move = moveGen.nextMove()
+            if (move.isNull()) break
 
             position.doMove(move, plyFromRoot)
             nodes += perft(plyFromRoot + 1, depth - 1)
@@ -533,7 +536,9 @@ class Engine {
         moveGen.begin(inCheck = position.isColorInCheck(position.turn))
 
         while (true) {
-            val move = moveGen.nextMove() ?: break
+            val move = moveGen.nextMove()
+            if (move.isNull()) break
+
             if (depth == 1) {
                 results[move] = 1
             } else {
@@ -563,7 +568,7 @@ class Engine {
             val inCheck = position.isColorInCheck(position.turn)
 
             // search only returns null move when no moves are possible, so stalemate or checkmate
-            if (searchResult.move == Move.NULL_MOVE) {
+            if (searchResult.move.isNull()) {
                 result = if (inCheck) (if (position.turn == Color.WHITE) 0f else 1f) else 0.5f
                 break
             }
@@ -628,7 +633,7 @@ class Engine {
         val pv = ArrayList<Move>()
 
         for (i in 0..<pvLength[0]) {
-            pv.add(pvTable[0 * 48 + i].toMove())
+            pv.add(pvTable[0 * 48 + i])
         }
 
         return pv
@@ -646,7 +651,9 @@ class Engine {
             moveGens[0].begin(inCheck = position.isColorInCheck(position.turn))
 
             while (true) {
-                val move = moveGens[0].nextMove() ?: break
+                val move = moveGens[0].nextMove()
+                if (move.isNull()) break
+
                 allMoves.add(move)
             }
 

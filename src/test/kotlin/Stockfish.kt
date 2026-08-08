@@ -19,8 +19,8 @@ class Stockfish {
         writer.flush()
     }
 
-    fun setPosition(fen: String, vararg moves: Move) {
-        send(uciPositionCmd(fen, *moves))
+    fun setPosition(fen: String, moves: List<Move>) {
+        send(uciPositionCmd(fen, moves))
     }
 
     fun perft(depth: Int): Map<String, Long> {

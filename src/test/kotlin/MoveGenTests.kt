@@ -38,7 +38,7 @@ class MoveGenTests {
     }
 
     fun perftCompare(depth: Int, fen: String, moves: List<Move> = ArrayList()) {
-        stockfish.setPosition(fen, *moves.toTypedArray())
+        stockfish.setPosition(fen, moves)
         engine.position = Board.fromFen(fen)
         for (move in moves) {
             engine.position.doMove(move, Engine.MAX_SEARCH_PLY)

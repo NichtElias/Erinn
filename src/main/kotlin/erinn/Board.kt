@@ -553,7 +553,7 @@ class Board {
     }
 
     fun isPseudoLegalMove(move: Move): Boolean {
-        if (move == Move.NULL_MOVE) return false
+        if (move.isNull()) return false
 
         val piece = pieces[move.src.v]
         if (piece == Piece.NONE) return false // can't move null piece
