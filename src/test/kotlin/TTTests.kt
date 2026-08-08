@@ -1,4 +1,5 @@
 import party.elias.erinn.Board
+import party.elias.erinn.Engine
 import party.elias.erinn.Move
 import party.elias.erinn.TranspositionTable
 import kotlin.math.min
@@ -56,13 +57,13 @@ class TTTests {
         val startHash = position.zobristHash
 
         val m1 = Move.fromUci("f2f3", position)
-        val m1State = position.doMove(m1)
-        position.undoMove(m1, m1State)
+        position.doMove(m1, Engine.MAX_SEARCH_PLY)
+        position.undoMove(m1, Engine.MAX_SEARCH_PLY)
 
         assertEquals(startHash, position.zobristHash)
 
-        position.doMove(Move.fromUci("b1c3", position))
-        position.doMove(Move.fromUci("c3b1", position))
+        position.doMove(Move.fromUci("b1c3", position), Engine.MAX_SEARCH_PLY)
+        position.doMove(Move.fromUci("c3b1", position), Engine.MAX_SEARCH_PLY)
 
         assertEquals(startHash, position.zobristHash)
 

@@ -22,6 +22,8 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+
+    maxHeapSize = "2G"
 }
 
 tasks.shadowJar {

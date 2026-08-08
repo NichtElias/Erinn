@@ -27,7 +27,7 @@ class BoardTests {
 
                 f(engine.position)
 
-                engine.position.doMove(allMoves[rng.nextInt(allMoves.size)])
+                engine.position.doMove(allMoves[rng.nextInt(allMoves.size)], Engine.MAX_SEARCH_PLY)
             }
         }
     }
@@ -85,9 +85,9 @@ class BoardTests {
             while (true) {
                 val move = engine.moveGens[0].nextMove() ?: break
 
-                val stateInfo = engine.position.doMove(move)
+                engine.position.doMove(move, Engine.MAX_SEARCH_PLY)
                 val putsInCheck = engine.position.isColorInCheck(engine.position.turn)
-                engine.position.undoMove(move, stateInfo)
+                engine.position.undoMove(move, Engine.MAX_SEARCH_PLY)
 
                 assertEquals(putsInCheck, engine.position.putsOpponentInCheck(move), "unexpected putsOpponentInCheck result for move ${move.toUci()} at position fen ${b.toFen()}")
             }

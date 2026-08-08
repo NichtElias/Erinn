@@ -41,7 +41,7 @@ class MoveGenTests {
         stockfish.setPosition(fen, *moves.toTypedArray())
         engine.position = Board.fromFen(fen)
         for (move in moves) {
-            engine.position.doMove(move)
+            engine.position.doMove(move, Engine.MAX_SEARCH_PLY)
         }
 
         val stockfishResults = stockfish.perft(depth)
