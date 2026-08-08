@@ -117,7 +117,7 @@ class Engine {
         return bestScore
     }
 
-    fun search(plyFromRoot: Int, remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE, isPV: Boolean = true): Result {
+    fun search(plyFromRoot: Int, remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE, isPV: Boolean = true): Score {
         if (plyFromRoot == 0) {
             pvLength.fill(0)
         }
@@ -126,11 +126,11 @@ class Engine {
 
         if (nodesSearched++ and 255 == 0L) {
             if (stop) {
-                return Result.ABORT
+                return -MATE_SCORE
             }
         }
 
-        if (position.isDrawByRepetition() || position.halfMoves >= 100 || position.isDrawByInsufficientMaterial()) return Result.draw()
+        if (position.isDrawByRepetition() || position.halfMoves >= 100 || position.isDrawByInsufficientMaterial()) return DRAW_SCORE
 
         // probe transposition table
         val ttValue = tt.get(position.zobristHash)
@@ -143,13 +143,13 @@ class Engine {
             val adjustedScore = ttValue.getAdjustedScore(position.turn, plyFromRoot)
             when (ttValue.boundType) {
                 TranspositionTable.BOUND_EXACT ->
-                    return Result(ttValue.bestMove, adjustedScore)
+                    return adjustedScore
 
                 TranspositionTable.BOUND_LOWER -> if (adjustedScore >= beta)
-                    return Result(Move.NULL_MOVE, adjustedScore)
+                    return adjustedScore
 
                 TranspositionTable.BOUND_UPPER -> if (adjustedScore < alpha)
-                    return Result(Move.NULL_MOVE, adjustedScore)
+                    return adjustedScore
             }
         }
 
@@ -157,7 +157,7 @@ class Engine {
 
         if (inCheck && (plyFromRoot < 24 || remainingDepth == 0)) remainingDepth++ // check extension
 
-        if (remainingDepth == 0) return Result(Move.NULL_MOVE, qSearch(plyFromRoot, alpha, beta))
+        if (remainingDepth == 0) return qSearch(plyFromRoot, alpha, beta)
 
         // reverse futility pruning
         var staticEval: Score = 0
@@ -166,7 +166,7 @@ class Engine {
             staticEval = evaluate(plyFromRoot)
             hasStaticEval = true
             if (staticEval >= beta + 100 * remainingDepth) {
-                return Result(Move.NULL_MOVE, staticEval)
+                return staticEval
             }
         }
 
@@ -186,19 +186,17 @@ class Engine {
 
                 doNullMoveWithAccUpdate(plyFromRoot)
 
-                val nullMoveResult =
-                    search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -beta + 1, false)
-                val nullMoveScore = -nullMoveResult.score
+                val nullMoveScore = -search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -beta + 1, false)
 
                 position.undoNullMove(plyFromRoot)
 
-                if (nullMoveResult.aborted) {
-                    return Result.ABORT
+                if (stop) {
+                    return -MATE_SCORE
                 }
 
                 // if null move would cause beta cutoff, we can assume the best move we can find in this position would also cause a beta cutoff
                 if (nullMoveScore >= beta) {
-                    return Result(Move.NULL_MOVE, nullMoveScore)
+                    return nullMoveScore
                 }
             }
         }
@@ -260,25 +258,22 @@ class Engine {
                 reduction = min(1 + ((remainingDepth - 2 + if (historyTable[historyIndex] <= 0) 1 else -1) / 2), remainingDepth - 1)
             }
 
-            var result: Result
             var score: Score
 
             pvLength[plyFromRoot + 1] = 0
-            result = pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
-            score = -result.score
+            score = -pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
 
             if (reduction > 0 && score > alpha) {
                 reduction = 0
-                result = pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
-                score = -result.score
+                score = -pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
             }
 
             position.undoMove(move, plyFromRoot)
 
-            if (result.aborted) return Result.ABORT
+            if (stop) return -MATE_SCORE
 
             if (plyFromRoot == 0 && moveCount == 1 && score <= alpha) {
-                return Result(move, score)
+                return score
             }
 
             if (score > bestScore) {
@@ -328,19 +323,19 @@ class Engine {
 
                 tt.store(position.zobristHash, remainingDepth, position.turn,
                     plyFromRoot, score, TranspositionTable.BOUND_LOWER, move)
-                return Result(move, score)
+                return score
             }
         }
 
         if (moveCount == 0) {
             if (inCheck)
-                return Result.checkmated(plyFromRoot) // we got checkmated
+                return matedScore(plyFromRoot) // we got checkmated
 
-            return Result.draw() // stalemate
+            return DRAW_SCORE // stalemate
         }
 
         // we need to return something that isn't a checkmate score if we didn't actually search any moves
-        if (moveCount - prunedMoves == 0) return Result(Move.NULL_MOVE, alpha)
+        if (moveCount - prunedMoves == 0) return alpha
 
         collectSearchStats(ttValue, firstMoveWasBestMove, bestMove, firstIsKiller)
 
@@ -352,7 +347,7 @@ class Engine {
                 plyFromRoot, bestScore, TranspositionTable.BOUND_UPPER, bestMove)
         }
 
-        return Result(bestMove, bestScore)
+        return bestScore
     }
 
     private fun pvs(
@@ -364,17 +359,17 @@ class Engine {
         beta: Score,
         alpha: Score,
         isPV: Boolean,
-    ): Result {
-        var result: Result
+    ): Score {
+        var score: Score
         if (moveCount == 1) {
-            result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, isPV)
+            score = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, isPV)
         } else {
-            result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -alpha - 1, -alpha, false)
-            if (-result.score > alpha && -result.score < beta && !result.aborted) {
-                result = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, true)
+            score = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -alpha - 1, -alpha, false)
+            if (-score > alpha && -score < beta && !stop) {
+                score = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, true)
             }
         }
-        return result
+        return score
     }
 
     fun iterDeep(limits: Limits): Result {
@@ -396,9 +391,10 @@ class Engine {
             var result: Result
 
             while (true) {
-                result = search(0, d, limits, windowAlpha, windowBeta)
+                val score = search(0, d, limits, windowAlpha, windowBeta)
+                result = Result(pvTable[0], score)
 
-                if (result.aborted) return deepestResult
+                if (stop) return deepestResult
 
                 if (result.score <= windowAlpha) {
                     // fail-low
@@ -668,6 +664,7 @@ class Engine {
         const val MAX_SEARCH_PLY: Int = 64
         const val MIN_MATE_SCORE: Score = MATE_SCORE - MAX_SEARCH_PLY
         const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
+        const val DRAW_SCORE: Score = 0
 
         val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
 
@@ -680,19 +677,11 @@ class Engine {
 
             return 1F / (1F + exp(-score  / 400F))
         }
-    }
 
-    data class Result(val move: Move, val score: Score, val aborted: Boolean = false) {
-        companion object {
-            val ABORT = Result(Move.NULL_MOVE, -MATE_SCORE,  aborted = true)
-
-            fun checkmated(depth: Int): Result {
-                return Result(Move.NULL_MOVE, -MATE_SCORE + depth)
-            }
-
-            fun draw(): Result {
-                return Result(Move.NULL_MOVE, 0)
-            }
+        fun matedScore(plyFromRoot: Int): Score {
+            return -MATE_SCORE + plyFromRoot
         }
     }
+
+    data class Result(val move: Move, val score: Score)
 }
