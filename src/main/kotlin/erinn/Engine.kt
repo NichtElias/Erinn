@@ -248,7 +248,7 @@ class Engine {
 
             var reduction = 0
 
-            if (!isPV && remainingDepth >= 2 && moveCount > 4
+            if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount > 4
                 && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
                 && !isKiller(move, plyFromRoot)
                 && move.capture == Piece.NONE
@@ -256,6 +256,8 @@ class Engine {
             ) {
                 val historyIndex = position.turn.opponent.idx * 64 * 64 + move.src.v * 64 + move.dst.v
                 reduction = min(1 + ((remainingDepth - 2 + if (historyTable[historyIndex] <= 0) 1 else -1) / 2), remainingDepth - 1)
+
+                if (isPV) reduction /= 2
             }
 
             var score: Score
