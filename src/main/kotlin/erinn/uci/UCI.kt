@@ -133,6 +133,7 @@ fun run() {
             } else {
 
                 var depthLimit = 48
+                var nodeLimit = Long.MAX_VALUE
                 var bTime = -1
                 var wTime = -1
                 var bInc = 0
@@ -143,6 +144,7 @@ fun run() {
                 while (i < cmd.size) {
                     when (cmd[i]) {
                         "depth" -> depthLimit = min(cmd[++i].toInt(), 48)
+                        "nodes" -> nodeLimit = cmd[++i].toLong()
                         "btime" -> bTime = cmd[++i].toInt()
                         "wtime" -> wTime = cmd[++i].toInt()
                         "binc" -> bInc = cmd[++i].toInt()
@@ -156,14 +158,14 @@ fun run() {
                 val ourInc = if (engine.position.turn == Color.BLACK) bInc else wInc
 
                 val limits = if (moveTime != -1) {
-                    Limits(depthLimit, moveTime.milliseconds, moveTime.milliseconds)
+                    Limits(depthLimit, hardNodes = nodeLimit, softTime = moveTime.milliseconds, hardTime = moveTime.milliseconds)
                 } else if (ourTime != -1) {
                     val softLimit = ourTime / 35 + ourInc / 2
                     // - moveTimeBuffer is because the gui doesn't immediately receive the bestmove once the search is stopped
                     val hardLimit = max(ourTime * 70 / 100 - moveTimeBuffer, 0)
-                    Limits(depthLimit, min(softLimit, hardLimit).milliseconds, hardLimit.milliseconds)
+                    Limits(depthLimit, hardNodes = nodeLimit, softTime = min(softLimit, hardLimit).milliseconds, hardTime = hardLimit.milliseconds)
                 } else {
-                    Limits(depthLimit)
+                    Limits(depthLimit, hardNodes = nodeLimit)
                 }
 
                 val searchTimer = searchScope.launch {
@@ -202,12 +204,12 @@ fun run() {
             println(scoreString(engine.evaluate(0)))
         } else if (cmd[0] == "genpos") {
 
-            val depth = cmd[1].toInt()
+            val nodes = cmd[1].toLong()
             val gameCount = cmd[2].toInt()
             val seed = cmd[3].toInt()
             val file = cmd[4]
 
-            engine.genEvalPosFromSelfPlayGames(seed, depth, gameCount, File(file))
+            engine.genEvalPosFromSelfPlayGames(seed, nodes, gameCount, File(file))
 
             println("genposdone")
 

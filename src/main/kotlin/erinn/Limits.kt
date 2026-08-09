@@ -2,4 +2,10 @@ package party.elias.erinn
 
 import kotlin.time.Duration
 
-data class Limits(val depth: Int = 64, val softTime: Duration = Duration.INFINITE, val hardTime: Duration = Duration.INFINITE)
+data class Limits(
+    val depth: Int = 64,
+    val softNodes: Long = Long.MAX_VALUE,
+    val hardNodes: Long = Long.MAX_VALUE,
+    val softTime: Duration = Duration.INFINITE,
+    val hardTime: Duration = Duration.INFINITE
+)

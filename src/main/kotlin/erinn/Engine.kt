@@ -125,6 +125,9 @@ class Engine {
         var remainingDepth = remainingDepth
 
         if (nodesSearched++ and 255 == 0L) {
+            if (nodesSearched >= limits.hardNodes) {
+                stop = true
+            }
             if (stop) {
                 return -MATE_SCORE
             }
@@ -420,7 +423,10 @@ class Engine {
             if (printInfo)
                 sendUciInfo(d, elapsed, nodesSearched, result.score, getPv(), tt.fullPerMill())
 
-            if (elapsed > limits.softTime || (abs(result.score) >= MIN_MATE_SCORE && MATE_SCORE - abs(result.score) < d)) {
+            if (elapsed > limits.softTime
+                || nodesSearched >= limits.softNodes
+                || (abs(result.score) >= MIN_MATE_SCORE && MATE_SCORE - abs(result.score) < d)
+            ) {
                 break
             }
         }
@@ -549,7 +555,7 @@ class Engine {
         return results
     }
 
-    fun genEvalPosFromSelfPlayGame(searchDepth: Int, file: File): Int {
+    fun genEvalPosFromSelfPlayGame(searchNodes: Long, file: File): Int {
 
         val positions: ArrayList<ByteArray> = ArrayList()
         var result: Float
@@ -561,7 +567,7 @@ class Engine {
                 break
             }
 
-            val searchResult = iterDeep(Limits(searchDepth))
+            val searchResult = iterDeep(Limits(48, softNodes = searchNodes))
 
             val inCheck = position.isColorInCheck(position.turn)
 
@@ -597,7 +603,7 @@ class Engine {
         return positions.size
     }
 
-    fun genEvalPosFromSelfPlayGames(seed: Int, searchDepth: Int, games: Int, file: File) {
+    fun genEvalPosFromSelfPlayGames(seed: Int, searchNodes: Long, games: Int, file: File) {
         val rng = Random(seed)
 
         var positionsGenerated = 0
@@ -613,7 +619,7 @@ class Engine {
             // amount of random moves played is 4 to 10 but heavily skewed to the higher end
             makeRandomMoves(rng, rng.nextInt(rng.nextInt(4, 11), 11), 10)
 
-            positionsGenerated += genEvalPosFromSelfPlayGame(searchDepth, file)
+            positionsGenerated += genEvalPosFromSelfPlayGame(searchNodes, file)
 
             val currentTimeStamp = TimeSource.Monotonic.markNow()
             if (currentTimeStamp - lastInfoPrint > 5.seconds) {
