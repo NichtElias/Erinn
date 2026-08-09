@@ -222,7 +222,7 @@ class Engine {
         var alphaRaised = false
 
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin(inCheck = inCheck, hashMove = ttValue.bestMove, killerMoves = killers[plyFromRoot], doSEE = remainingDepth > 2)
+        moveGen.begin(inCheck = inCheck, hashMove = ttValue.bestMove, killerMoves = killers[plyFromRoot], doSEE = true)
 
         while (true) {
             val move = moveGen.nextMove()
