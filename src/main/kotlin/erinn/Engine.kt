@@ -388,6 +388,14 @@ class Engine {
 
         resetSearchStats()
 
+        // test if it's checkmate or stalemate first
+        val inCheck = position.isColorInCheck(position.turn)
+        moveGens[0].begin(inCheck = inCheck)
+
+        if (moveGens[0].nextMove() == Move.NULL_MOVE) {
+            return Result(Move.NULL_MOVE, if (inCheck) -MATE_SCORE else 0)
+        }
+
         for (d in 1..limits.depth) {
             var delta = 15
             var windowAlpha = deepestResult.score - delta
