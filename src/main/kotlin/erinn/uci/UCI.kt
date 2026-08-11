@@ -12,9 +12,12 @@ import party.elias.erinn.Limits
 import party.elias.erinn.Move
 import party.elias.erinn.nnue.NNUE
 import party.elias.erinn.Score
+import party.elias.erinn.Square
 import java.io.File
 import kotlin.collections.iterator
 import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.Duration
@@ -212,6 +215,43 @@ fun run() {
             engine.genEvalPosFromSelfPlayGames(seed, nodes, gameCount, File(file))
 
             println("genposdone")
+
+        } else if (cmd[0] == "gethist") {
+
+            val color = when (cmd[1]) {
+                "white" -> Color.WHITE
+                "black" -> Color.BLACK
+                else -> {
+                    println("${cmd[1]} is not a valid color")
+                    continue
+                }
+            }
+
+            if (cmd[2] == "move") {
+
+                val moveSrc = Square.parseUci(cmd[3].substring(0..1))
+                val moveDst = Square.parseUci(cmd[3].substring(2..3))
+
+                println(engine.historyTable[color.idx * 64 * 64 + moveSrc.v * 64 + moveDst.v])
+
+            } else if (cmd[2] == "from") {
+
+                val moveSrc = Square.parseUci(cmd[3])
+
+                val cellWidth = ceil(log10(engine.historyTable.max().toFloat())).toInt() + 1
+
+                for (ri in 7 downTo 0) {
+
+                    for (fi in 0..7) {
+                        val hist = engine.historyTable[color.idx * 64 * 64 + moveSrc.v * 64 + ri * 8 + fi]
+
+                        print(String.format("%${cellWidth}d", hist))
+                    }
+                    println()
+
+                }
+
+            }
 
         }
     }
