@@ -253,7 +253,7 @@ class Engine {
 
             var reduction = 0
 
-            if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount > 4
+            if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount >= 4
                 && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
                 && !isKiller(move, plyFromRoot)
                 && move.capture == Piece.NONE
