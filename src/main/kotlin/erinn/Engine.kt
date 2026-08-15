@@ -7,7 +7,9 @@ import java.io.File
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.ln
 import kotlin.math.min
+import kotlin.math.sign
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -258,7 +260,8 @@ class Engine {
                 && move.promotion == PieceType.NONE
             ) {
                 val historyIndex = position.turn.opponent.idx * 64 * 64 + move.src.v * 64 + move.dst.v
-                reduction = min(1 + ((remainingDepth - 2 + if (historyTable[historyIndex] <= 0) 1 else -1) / 2), remainingDepth - 1)
+                reduction = ((LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)] - historyTable[historyIndex].sign * 512) / 1024)
+                    .coerceIn(0, remainingDepth - 1)
 
                 if (isPV) reduction /= 2
             }
@@ -684,7 +687,17 @@ class Engine {
 
         val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
 
+        val LMR_TABLE = IntArray(MAX_SEARCH_PLY * 128)
+
         val HISTORY_MAX = 1 shl 16
+
+        init {
+            for (depth in 1..<MAX_SEARCH_PLY) {
+                for (moveNum in 1..<128) {
+                    LMR_TABLE[depth * 128 + moveNum] = ((1F + ln(depth.toFloat()) * ln(moveNum.toFloat()) / 2.8F) * 1024F).toInt()
+                }
+            }
+        }
 
         fun scoreToWdl(score: Score): Float {
             if (abs(score) >= MIN_MATE_SCORE) {
