@@ -135,5 +135,11 @@ class TranspositionTable(val capacity: Int) {
         fun getAdjustedScore(perspective: Color, plyFromRoot: Int): Score {
             return adjustScore(score, perspective, -plyFromRoot)
         }
+
+        fun checkBounds(adjustedScore: Score, alpha: Score, beta: Score): Boolean {
+            return (boundType == BOUND_EXACT
+                    || (boundType == BOUND_LOWER && adjustedScore >= beta)
+                    || (boundType == BOUND_UPPER && adjustedScore < alpha))
+        }
     }
 }

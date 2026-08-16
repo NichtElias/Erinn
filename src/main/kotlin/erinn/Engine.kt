@@ -86,6 +86,16 @@ class Engine {
         if (bestScore >= beta) return bestScore
         if (bestScore > alpha) alpha = bestScore
 
+        // probe transposition table
+        val ttValue = tt.get(position.zobristHash)
+        if (ttValue.v != 0L) {
+            // TT cutoffs
+            val adjustedScore = ttValue.getAdjustedScore(position.turn, plyFromRoot)
+            if (ttValue.checkBounds(adjustedScore, alpha, beta)) {
+                return adjustedScore
+            }
+        }
+
         val inCheck = position.isColorInCheck(position.turn)
         val moveGen = moveGens[plyFromRoot]
         moveGen.begin(genQuiets = false, inCheck = inCheck)
@@ -146,15 +156,8 @@ class Engine {
         ) {
             // TT cutoffs
             val adjustedScore = ttValue.getAdjustedScore(position.turn, plyFromRoot)
-            when (ttValue.boundType) {
-                TranspositionTable.BOUND_EXACT ->
-                    return adjustedScore
-
-                TranspositionTable.BOUND_LOWER -> if (adjustedScore >= beta)
-                    return adjustedScore
-
-                TranspositionTable.BOUND_UPPER -> if (adjustedScore < alpha)
-                    return adjustedScore
+            if (ttValue.checkBounds(adjustedScore, alpha, beta)) {
+                return adjustedScore
             }
         }
 
