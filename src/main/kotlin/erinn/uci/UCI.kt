@@ -100,7 +100,7 @@ fun run() {
                 i++
                 val fenString = StringBuilder()
                 while (i < cmd.size && cmd[i] != "moves") {
-                    if (!fenString.isEmpty()) {
+                    if (fenString.isNotEmpty()) {
                         fenString.append(" ")
                     }
                     fenString.append(cmd[i])

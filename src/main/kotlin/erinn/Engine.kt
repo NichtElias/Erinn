@@ -692,7 +692,7 @@ class Engine {
 
         val LMR_TABLE = IntArray(MAX_SEARCH_PLY * 128)
 
-        val HISTORY_MAX = 1 shl 16
+        const val HISTORY_MAX = 1 shl 16
 
         init {
             for (depth in 1..<MAX_SEARCH_PLY) {

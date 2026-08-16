@@ -56,7 +56,7 @@ class MoveGen(val position: Board, val engine: Engine) {
             when (stage) {
                 Stage.HASH -> {
                     // take a shortcut for the hash move, it's only ever one move, so we can just return it
-                    if (hashMove != null && position.isLegalMove(hashMove!!)) {
+                    if (!hashMove.isNull() && position.isLegalMove(hashMove)) {
                         nextStage()
                         return hashMove
                     }
@@ -225,7 +225,7 @@ class MoveGen(val position: Board, val engine: Engine) {
 
                 Stage.EVASION_HASH -> {
                     // take a shortcut for the hash move, it's only ever one move, so we can just return it
-                    if (hashMove != null && position.isLegalMove(hashMove!!)) {
+                    if (!hashMove.isNull() && position.isLegalMove(hashMove)) {
                         nextStage()
                         return hashMove
                     }
