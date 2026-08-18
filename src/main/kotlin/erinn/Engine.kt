@@ -78,10 +78,15 @@ class Engine {
         position.doNullMove(plyFromRoot)
     }
 
-    fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score): Score {
+    fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score, limits: Limits): Score {
         var alpha = alpha
         val staticEval = evaluate(plyFromRoot)
         var bestScore = staticEval
+
+        if (++nodesSearched >= limits.hardNodes || stop) {
+            stop = true
+            return -MATE_SCORE
+        }
 
         if (bestScore >= beta) return bestScore
         if (bestScore > alpha) alpha = bestScore
@@ -115,7 +120,7 @@ class Engine {
             }
 
             doMoveWithAccUpdate(plyFromRoot, move)
-            val score = -qSearch(plyFromRoot + 1, -beta, -alpha)
+            val score = -qSearch(plyFromRoot + 1, -beta, -alpha, limits)
             position.undoMove(move, plyFromRoot)
 
             if (score >= beta)
@@ -136,13 +141,9 @@ class Engine {
 
         var remainingDepth = remainingDepth
 
-        if (nodesSearched++ and 255 == 0L) {
-            if (nodesSearched >= limits.hardNodes) {
-                stop = true
-            }
-            if (stop) {
-                return -MATE_SCORE
-            }
+        if (++nodesSearched >= limits.hardNodes || stop) {
+            stop = true
+            return -MATE_SCORE
         }
 
         if (position.isDrawByRepetition() || position.halfMoves >= 100 || position.isDrawByInsufficientMaterial()) return DRAW_SCORE
@@ -165,7 +166,7 @@ class Engine {
 
         if (inCheck && (plyFromRoot < 24 || remainingDepth == 0)) remainingDepth++ // check extension
 
-        if (remainingDepth == 0) return qSearch(plyFromRoot, alpha, beta)
+        if (remainingDepth == 0) return qSearch(plyFromRoot, alpha, beta, limits)
 
         // reverse futility pruning
         var staticEval: Score = 0
