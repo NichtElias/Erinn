@@ -253,7 +253,17 @@ class Engine {
                 continue
             }
 
-            doMoveWithAccUpdate(plyFromRoot, move)
+            if (!isPV
+                && !inCheck && !putsInCheck
+                && !isKiller(move, plyFromRoot)
+                && move.capture == Piece.NONE
+                && move.promotion == PieceType.NONE
+                && remainingDepth <= 3
+                && moveCount >= 4 + 4 * remainingDepth
+            ) {
+                prunedMoves++
+                continue
+            }
 
             var reduction = 0
 
@@ -263,12 +273,14 @@ class Engine {
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
             ) {
-                val historyIndex = position.turn.opponent.idx * 64 * 64 + move.src.v * 64 + move.dst.v
+                val historyIndex = position.turn.idx * 64 * 64 + move.src.v * 64 + move.dst.v
                 reduction = ((LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)] - historyTable[historyIndex].sign * 512) / 1024)
                     .coerceIn(0, remainingDepth - 1)
 
                 if (isPV) reduction /= 2
             }
+
+            doMoveWithAccUpdate(plyFromRoot, move)
 
             var score: Score
 
