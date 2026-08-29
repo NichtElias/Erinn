@@ -35,7 +35,7 @@ object NNUE {
 
     fun load() {
 
-        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_768x8_hm_128_screlu_v11.bin")?.readAllBytes()
+        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_768x8_hm_128_screlu_v12.bin")?.readAllBytes()
         val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
 
         buffer.get(ftBiases)
