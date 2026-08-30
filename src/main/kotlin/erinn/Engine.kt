@@ -166,7 +166,10 @@ class Engine {
 
         if (inCheck && (plyFromRoot < 24 || remainingDepth == 0)) remainingDepth++ // check extension
 
-        if (remainingDepth == 0) return qSearch(plyFromRoot, alpha, beta, limits)
+        if (remainingDepth == 0) {
+            nodesSearched--
+            return qSearch(plyFromRoot, alpha, beta, limits)
+        }
 
         // reverse futility pruning
         var staticEval: Score = 0
