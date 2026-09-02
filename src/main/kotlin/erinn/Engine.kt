@@ -35,12 +35,9 @@ class Engine {
 
     var nodesSearched: Long = 0
 
-    val killers: Array<Array<Move>> = Array(MAX_GAME_PLY) { Array(2) { Move.NULL_MOVE } }
+    val searchStack: SearchStack = SearchStack()
 
     val historyTable: IntArray = IntArray(2 * 64 * 64)
-
-    val pvTable: MoveArray = MoveArray(MAX_SEARCH_PLY * MAX_SEARCH_PLY)
-    val pvLength: IntArray = IntArray(MAX_SEARCH_PLY)
 
     val accStack: AccumulatorStack = AccumulatorStack()
 
@@ -136,7 +133,7 @@ class Engine {
 
     fun search(plyFromRoot: Int, remainingDepth: Int, limits: Limits, alpha: Score = -MATE_SCORE, beta: Score = MATE_SCORE, isPV: Boolean = true): Score {
         if (plyFromRoot == 0) {
-            pvLength.fill(0)
+            searchStack.forEach { sse -> sse.pvLength = 0 }
         }
 
         var remainingDepth = remainingDepth
@@ -171,13 +168,21 @@ class Engine {
             return qSearch(plyFromRoot, alpha, beta, limits)
         }
 
+        val sse = searchStack[plyFromRoot]
+        sse.staticEval = if (!inCheck) evaluate(plyFromRoot) else INVALID_SCORE
+        val staticEval = sse.staticEval
+
+        val improving = !inCheck && if (plyFromRoot >= 2 && searchStack[plyFromRoot - 2].staticEval != INVALID_SCORE) {
+            staticEval > searchStack[plyFromRoot - 2].staticEval
+        } else if (plyFromRoot >= 4 && searchStack[plyFromRoot - 4].staticEval != INVALID_SCORE) {
+            staticEval > searchStack[plyFromRoot - 4].staticEval
+        } else {
+            true
+        }
+
         // reverse futility pruning
-        var staticEval: Score = 0
-        var hasStaticEval = false
         if (!isPV && !inCheck && remainingDepth < 6) {
-            staticEval = evaluate(plyFromRoot)
-            hasStaticEval = true
-            if (staticEval >= beta + 100 * remainingDepth) {
+            if (staticEval >= beta + (if (improving) 50 else 100) * remainingDepth) {
                 return staticEval
             }
         }
@@ -188,9 +193,6 @@ class Engine {
             && remainingDepth > 2
             && position.nonKpPieceCount(position.turn) > 0
         ) {
-            staticEval = if (hasStaticEval) staticEval else evaluate(plyFromRoot)
-            hasStaticEval = true
-
             if (staticEval >= beta) {
 
                 var reduction = 2
@@ -219,7 +221,7 @@ class Engine {
                 && !isPV
                 && !inCheck
                 && abs(alpha) < 9000
-                && (if (hasStaticEval) staticEval else evaluate(plyFromRoot)) + FUTILITY_MARGINS[remainingDepth] <= alpha)
+                && staticEval + FUTILITY_MARGINS[remainingDepth] <= alpha)
 
         var alpha = alpha
 
@@ -234,14 +236,14 @@ class Engine {
         var alphaRaised = false
 
         val moveGen = moveGens[plyFromRoot]
-        moveGen.begin(inCheck = inCheck, hashMove = ttValue.bestMove, killerMoves = killers[plyFromRoot], doSEE = true)
+        moveGen.begin(inCheck = inCheck, hashMove = ttValue.bestMove, killerMoves = searchStack[plyFromRoot].killers, doSEE = true)
 
         while (true) {
             val move = moveGen.nextMove()
             if (move.isNull()) break
             moveCount++
 
-            if (debugMode && moveCount == 1 && (move == killers[plyFromRoot][0] || move == killers[plyFromRoot][1])) {
+            if (debugMode && moveCount == 1 && (move == searchStack[plyFromRoot].killers[0] || move == searchStack[plyFromRoot].killers[1])) {
                 firstIsKiller = true
             }
 
@@ -258,7 +260,7 @@ class Engine {
 
             if (!isPV
                 && !inCheck && !putsInCheck
-                && !isKiller(move, plyFromRoot)
+                && !searchStack.isKiller(move, plyFromRoot)
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
                 && remainingDepth <= 3
@@ -272,13 +274,15 @@ class Engine {
 
             if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount >= 4
                 && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
-                && !isKiller(move, plyFromRoot)
+                && !searchStack.isKiller(move, plyFromRoot)
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
             ) {
                 val historyIndex = position.turn.idx * 64 * 64 + move.src.v * 64 + move.dst.v
-                reduction = ((LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)] - historyTable[historyIndex].sign * 512) / 1024)
-                    .coerceIn(0, remainingDepth - 1)
+                reduction = LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)]
+                reduction -= historyTable[historyIndex].sign * 512
+
+                reduction = (reduction / 1024).coerceIn(0, remainingDepth - 1)
 
                 if (isPV) reduction /= 2
             }
@@ -287,7 +291,7 @@ class Engine {
 
             var score: Score
 
-            pvLength[plyFromRoot + 1] = 0
+            searchStack[plyFromRoot + 1].pvLength = 0
             score = -pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
 
             if (reduction > 0 && score > alpha) {
@@ -315,20 +319,14 @@ class Engine {
                     bestMove = move
 
                     if (isPV) {
-                        pvTable[plyFromRoot * MAX_SEARCH_PLY + 0] = move
-                        System.arraycopy(
-                            pvTable.array, (plyFromRoot + 1) * MAX_SEARCH_PLY,
-                            pvTable.array, plyFromRoot * MAX_SEARCH_PLY + 1,
-                            pvLength[plyFromRoot + 1]
-                        )
-                        pvLength[plyFromRoot] = pvLength[plyFromRoot + 1] + 1
+                        searchStack.pushPvMove(plyFromRoot, move)
                     }
                 }
             }
 
             if (score >= beta) {
                 if (move.capture == Piece.NONE && move.promotion == PieceType.NONE) {
-                    putKiller(move, plyFromRoot)
+                    searchStack.putKiller(move, plyFromRoot)
 
                     // apply history bonus for move that caused the cutoff
                     updateHistory(position.turn, move.src, move.dst, remainingDepth * remainingDepth)
@@ -427,7 +425,7 @@ class Engine {
 
             while (true) {
                 val score = search(0, d, limits, windowAlpha, windowBeta)
-                result = Result(pvTable[0], score)
+                result = Result(searchStack[0].pv[0], score)
 
                 if (stop) return deepestResult
 
@@ -506,24 +504,6 @@ class Engine {
         captureBestMoveCount = 0
         killerBestMoveCount = 0
         otherBestMoveCount = 0
-    }
-
-    fun putKiller(move: Move, plyFromRoot: Int) {
-        if (move != killers[plyFromRoot][0]) {
-            killers[plyFromRoot][1] = killers[plyFromRoot][0]
-        }
-        killers[plyFromRoot][0] = move
-    }
-
-    fun isKiller(move: Move, plyFromRoot: Int): Boolean {
-        return killers[plyFromRoot][0] == move || killers[plyFromRoot][1] == move
-    }
-
-    fun resetKillers() {
-        for (killerPair in killers) {
-            killerPair[0] = Move.NULL_MOVE
-            killerPair[1] = Move.NULL_MOVE
-        }
     }
 
     fun updateHistory(color: Color, from: Square, to: Square, bonus: Int) {
@@ -666,8 +646,8 @@ class Engine {
     fun getPv(): ArrayList<Move> {
         val pv = ArrayList<Move>()
 
-        for (i in 0..<pvLength[0]) {
-            pv.add(pvTable[0 * 48 + i])
+        for (i in 0..<searchStack[0].pvLength) {
+            pv.add(searchStack[0].pv[i])
         }
 
         return pv
@@ -703,6 +683,7 @@ class Engine {
         const val MIN_MATE_SCORE: Score = MATE_SCORE - MAX_SEARCH_PLY
         const val MAX_GAME_PLY: Int = 1024 // 512 would probably be enough for most cases, but I've seen some very long bot games
         const val DRAW_SCORE: Score = 0
+        const val INVALID_SCORE: Score = -0x8000
 
         val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
 

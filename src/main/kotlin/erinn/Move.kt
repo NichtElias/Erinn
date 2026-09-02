@@ -82,4 +82,10 @@ value class MoveArray(val array: IntArray) {
     operator fun set(index: Int, move: Move) {
         array[index] = move.v
     }
+
+    inline fun forEach(action: (Move) -> Unit) {
+        for (i in array.indices) {
+            action(this[i])
+        }
+    }
 }

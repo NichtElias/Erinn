@@ -89,7 +89,7 @@ fun run() {
 
         } else if (cmd[0] == "position") {
 
-            engine.resetKillers()
+            engine.searchStack.resetKillers()
             engine.ageHistory()
 
             var i = 1

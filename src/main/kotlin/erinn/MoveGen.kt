@@ -10,12 +10,12 @@ class MoveGen(val position: Board, val engine: Engine) {
     var finished: Boolean = false
 
     var hashMove: Move = Move.NULL_MOVE
-    var killerMoves: Array<Move>? = null
+    var killerMoves: MoveArray? = null
     var genQuiets: Boolean = true
     var inCheck: Boolean = false
     var doSEE: Boolean = false
 
-    fun begin(genQuiets: Boolean = true, inCheck: Boolean = false, hashMove: Move = Move.NULL_MOVE, killerMoves: Array<Move>? = null, doSEE: Boolean = false) {
+    fun begin(genQuiets: Boolean = true, inCheck: Boolean = false, hashMove: Move = Move.NULL_MOVE, killerMoves: MoveArray? = null, doSEE: Boolean = false) {
         stage = Stage.HASH
 
         quietMoves.reset()
@@ -142,7 +142,7 @@ class MoveGen(val position: Board, val engine: Engine) {
 
                 Stage.KILLER -> if (genQuiets && killerMoves != null) {
                     currentMoveContainer = quietMoves
-                    for (killer in killerMoves) {
+                    killerMoves?.forEach { killer ->
                         if (killer != Move.NULL_MOVE && position.isLegalMove(killer)) {
 
                             quietMoves.add(killer)
