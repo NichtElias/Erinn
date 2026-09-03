@@ -197,6 +197,8 @@ class Engine {
 
                 var reduction = 2
                 if (remainingDepth > 6) reduction = 3
+                if (improving) reduction++
+                reduction = reduction.coerceIn(0, remainingDepth - 1)
 
                 doNullMoveWithAccUpdate(plyFromRoot)
 
