@@ -8,7 +8,7 @@ class TranspositionTable(val capacity: Int) {
 
     val entries: LongArray = LongArray(capacity * 2)
 
-    fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move) {
+    fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move, staticEval: Score) {
         val index = (key.toULong() % capacity.toUInt()).toInt() * 2
 
         val newValue = TTValue(
@@ -17,7 +17,8 @@ class TranspositionTable(val capacity: Int) {
             else bestMove),
             adjustScore(score, perspective, plyFromRoot),
             draft,
-            boundType
+            boundType,
+            staticEval
         )
 
         entries[index] = key
@@ -122,15 +123,17 @@ class TranspositionTable(val capacity: Int) {
         val score: Score get() = ((v ushr 22) and 0xFFFF).toShort().toInt()
         val draft: Short get() = ((v ushr 38) and 0xFF).toShort()
         val boundType: BoundType get() = ((v ushr 46) and 0b11).toShort()
+        val staticEval: Score get() = ((v ushr 48) and 0xFFFF).toShort().toInt()
 
         constructor(
-            bestMove: Move, score: Score, draft: Int, boundType: BoundType
+            bestMove: Move, score: Score, draft: Int, boundType: BoundType, staticEval: Score
         ) : this(
             (bestMove.v.toLong() and 0x3FFFFF) // +22 bits
             or ((score and 0xFFFF).toLong() shl 22) // +16 bits
             or ((draft and 0xFF).toLong() shl 38) // +8 bits
             or ((boundType.toLong() and 0b11) shl 46) // + 2 bits
-        ) // 48 bits used
+            or ((staticEval and 0xFFFF).toLong() shl 48) // + 16 bits
+        ) // 64 bits used
 
         fun getAdjustedScore(perspective: Color, plyFromRoot: Int): Score {
             return adjustScore(score, perspective, -plyFromRoot)

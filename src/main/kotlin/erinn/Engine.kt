@@ -77,16 +77,11 @@ class Engine {
 
     fun qSearch(plyFromRoot: Int, alpha: Score, beta: Score, limits: Limits): Score {
         var alpha = alpha
-        val staticEval = evaluate(plyFromRoot)
-        var bestScore = staticEval
 
         if (++nodesSearched >= limits.hardNodes || stop) {
             stop = true
             return -MATE_SCORE
         }
-
-        if (bestScore >= beta) return bestScore
-        if (bestScore > alpha) alpha = bestScore
 
         // probe transposition table
         val ttValue = tt.get(position.zobristHash)
@@ -97,6 +92,12 @@ class Engine {
                 return adjustedScore
             }
         }
+
+        val staticEval = if (ttValue.v != 0L && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
+        var bestScore = staticEval
+
+        if (bestScore >= beta) return bestScore
+        if (bestScore > alpha) alpha = bestScore
 
         val inCheck = position.isColorInCheck(position.turn)
         val moveGen = moveGens[plyFromRoot]
@@ -169,7 +170,11 @@ class Engine {
         }
 
         val sse = searchStack[plyFromRoot]
-        sse.staticEval = if (!inCheck) evaluate(plyFromRoot) else INVALID_SCORE
+
+        sse.staticEval = if (!inCheck)
+            if (ttValue.v != 0L && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
+        else INVALID_SCORE
+
         val staticEval = sse.staticEval
 
         val improving = !inCheck && if (plyFromRoot >= 2 && searchStack[plyFromRoot - 2].staticEval != INVALID_SCORE) {
@@ -349,7 +354,7 @@ class Engine {
                 collectSearchStats(ttValue, firstMoveWasBestMove, bestMove, firstIsKiller)
 
                 tt.store(position.zobristHash, remainingDepth, position.turn,
-                    plyFromRoot, score, TranspositionTable.BOUND_LOWER, move)
+                    plyFromRoot, score, TranspositionTable.BOUND_LOWER, move, sse.staticEval)
                 return score
             }
         }
@@ -368,10 +373,10 @@ class Engine {
 
         if (alphaRaised) { // PV node
             tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BOUND_EXACT, bestMove)
+                plyFromRoot, bestScore, TranspositionTable.BOUND_EXACT, bestMove, sse.staticEval)
         } else { // all node
             tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BOUND_UPPER, bestMove)
+                plyFromRoot, bestScore, TranspositionTable.BOUND_UPPER, bestMove, sse.staticEval)
         }
 
         return bestScore
