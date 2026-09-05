@@ -317,11 +317,11 @@ class Board {
         return false
     }
 
-    fun seeWithThreshold(captureMove: Move, threshold: Score): Boolean {
-        val firstVictim = captureMove.capture
-        var attacker = pieces[captureMove.src.v]
+    fun seeWithThreshold(move: Move, threshold: Score): Boolean {
+        var attacker = pieces[move.src.v]
 
-        seeGain[0] = SEE_MATERIAL_VALUES[firstVictim.type.idx]
+        val firstVictim = move.capture
+        seeGain[0] = if (firstVictim == Piece.NONE) 0 else SEE_MATERIAL_VALUES[firstVictim.type.idx]
 
         // if we can't beat the threshold by capturing a free piece, we never will
         if (seeGain[0] < threshold) return false
@@ -332,11 +332,11 @@ class Board {
         var d = 0
         var side = turn.opponent
 
-        var attackersBB = ((attackersTargeting(captureMove.dst, Color.WHITE)
-                or attackersTargeting(captureMove.dst, Color.BLACK))
-                and captureMove.src.bb().inv())
+        var attackersBB = ((attackersTargeting(move.dst, Color.WHITE)
+                or attackersTargeting(move.dst, Color.BLACK))
+                and move.src.bb().inv())
 
-        var tempOcc = occupiedBB and captureMove.src.bb().inv()
+        var tempOcc = occupiedBB and move.src.bb().inv()
 
         while (true) {
             d++
@@ -344,13 +344,13 @@ class Board {
             // add new attackers from x-ray attacks
             var newAttackerBB = 0L
             if (attacker.type == PieceType.PAWN || attacker.type == PieceType.BISHOP || attacker.type == PieceType.QUEEN) {
-                newAttackerBB = newAttackerBB or (Magic.getBishopAttacks(captureMove.dst.v, tempOcc)
+                newAttackerBB = newAttackerBB or (Magic.getBishopAttacks(move.dst.v, tempOcc)
                         and (piecesBB[PieceType.BISHOP.idx] or piecesBB[PieceType.QUEEN.idx])
                         and tempOcc and attackersBB.inv()
                 )
             }
             if (attacker.type == PieceType.ROOK || attacker.type == PieceType.QUEEN) {
-                newAttackerBB = newAttackerBB or (Magic.getRookAttacks(captureMove.dst.v, tempOcc)
+                newAttackerBB = newAttackerBB or (Magic.getRookAttacks(move.dst.v, tempOcc)
                         and (piecesBB[PieceType.ROOK.idx] or piecesBB[PieceType.QUEEN.idx])
                         and tempOcc and attackersBB.inv()
                 )

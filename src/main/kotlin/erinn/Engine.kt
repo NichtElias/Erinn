@@ -277,6 +277,16 @@ class Engine {
                 continue
             }
 
+            if (!isPV
+                && !inCheck && !putsInCheck
+                && !searchStack.isKiller(move, plyFromRoot)
+                && remainingDepth <= 3
+                && !position.seeWithThreshold(move, -100)
+            ) {
+                prunedMoves++
+                continue
+            }
+
             var reduction = 0
 
             if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount >= 4
