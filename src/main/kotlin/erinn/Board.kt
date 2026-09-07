@@ -349,7 +349,7 @@ class Board {
                         and tempOcc and attackersBB.inv()
                 )
             }
-            if (attacker.type == PieceType.ROOK || attacker.type == PieceType.QUEEN) {
+            if ((d == 1 && attacker.type == PieceType.PAWN) || attacker.type == PieceType.ROOK || attacker.type == PieceType.QUEEN) {
                 newAttackerBB = newAttackerBB or (Magic.getRookAttacks(move.dst.v, tempOcc)
                         and (piecesBB[PieceType.ROOK.idx] or piecesBB[PieceType.QUEEN.idx])
                         and tempOcc and attackersBB.inv()
