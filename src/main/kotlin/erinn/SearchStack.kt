@@ -44,5 +44,7 @@ class SearchStack {
         var pvLength: Int = 0
         val killers: MoveArray = MoveArray(2)
         var staticEval: Score = Engine.INVALID_SCORE
+        var move: Move = Move.NULL_MOVE
+        var movingPieceType: PieceType = PieceType.NONE
     }
 }

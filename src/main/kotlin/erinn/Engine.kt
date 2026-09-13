@@ -21,10 +21,10 @@ class Engine {
     var position: Board = Board.startPos()
         set(newPos) {
             field = newPos
-            moveGens = Array(MAX_SEARCH_PLY) { MoveGen(newPos, this) }
+            moveGens = Array(MAX_SEARCH_PLY) { depth -> MoveGen(depth, newPos, this) }
         }
 
-    var moveGens: Array<MoveGen> = Array(MAX_SEARCH_PLY) { MoveGen(position, this) }
+    var moveGens: Array<MoveGen> = Array(MAX_SEARCH_PLY) { depth -> MoveGen(depth, position, this) }
 
     var tt: TranspositionTable = TranspositionTable(256 * (1 shl 20) / TranspositionTable.ENTRY_SIZE)
 
@@ -37,7 +37,7 @@ class Engine {
 
     val searchStack: SearchStack = SearchStack()
 
-    val historyTable: IntArray = IntArray(2 * 64 * 64)
+    val historyTables: HistoryTables = HistoryTables()
 
     val accStack: AccumulatorStack = AccumulatorStack()
 
@@ -248,6 +248,8 @@ class Engine {
         while (true) {
             val move = moveGen.nextMove()
             if (move.isNull()) break
+            sse.move = move
+            sse.movingPieceType = position.pieces[move.src.v].type
             moveCount++
 
             if (debugMode && moveCount == 1 && (move == searchStack[plyFromRoot].killers[0] || move == searchStack[plyFromRoot].killers[1])) {
@@ -295,9 +297,8 @@ class Engine {
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
             ) {
-                val historyIndex = position.turn.idx * 64 * 64 + move.src.v * 64 + move.dst.v
                 reduction = LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)]
-                reduction -= historyTable[historyIndex].sign * 512
+                reduction -= historyTables.getValue(position.turn, searchStack, plyFromRoot, move, sse.movingPieceType).sign * 512
 
                 reduction = (reduction / 1024).coerceIn(0, remainingDepth - 1)
 
@@ -346,7 +347,8 @@ class Engine {
                     searchStack.putKiller(move, plyFromRoot)
 
                     // apply history bonus for move that caused the cutoff
-                    updateHistory(position.turn, move.src, move.dst, remainingDepth * remainingDepth)
+                    historyTables.update(position.turn, searchStack, plyFromRoot, move,
+                        sse.movingPieceType, remainingDepth * remainingDepth)
 
                     // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
                     val compactMove = move
@@ -357,7 +359,8 @@ class Engine {
 
                         val earlierMove = moveGen.quietMoves.moves[i]
 
-                        updateHistory(position.turn, earlierMove.src, earlierMove.dst, - remainingDepth * remainingDepth)
+                        historyTables.update(position.turn, searchStack, plyFromRoot, earlierMove,
+                            position.pieces[earlierMove.src.v].type, - remainingDepth * remainingDepth)
                     }
                 }
 
@@ -477,12 +480,6 @@ class Engine {
         }
 
         if (debugMode) {
-            val historyMin = historyTable.min()
-            val historyMax = historyTable.max()
-            val historyMean = historyTable.sum() / historyTable.size
-            val historyMedian = historyTable.sorted()[historyTable.size / 2]
-            println("info string history stats: min: $historyMin max: $historyMax mean: $historyMean median: $historyMedian")
-
             print("info string first move hits: tt ${ttBestMoveCount.toFloat() / totalSearchedNodes * 100}%/${totalTTHits.toFloat() / totalSearchedNodes * 100}%, ")
             print("capture ${captureBestMoveCount.toFloat() / totalSearchedNodes * 100}%, ")
             print("killer ${killerBestMoveCount.toFloat() / totalSearchedNodes * 100}%, ")
@@ -521,25 +518,6 @@ class Engine {
         captureBestMoveCount = 0
         killerBestMoveCount = 0
         otherBestMoveCount = 0
-    }
-
-    fun updateHistory(color: Color, from: Square, to: Square, bonus: Int) {
-        val clampedBonus = bonus.coerceIn(-HISTORY_MAX, HISTORY_MAX)
-        val index = color.idx * 64 * 64 + from.v * 64 + to.v
-
-        historyTable[index] += clampedBonus - historyTable[index] * abs(clampedBonus) / HISTORY_MAX
-    }
-
-    fun ageHistory() {
-        for (i in historyTable.indices) {
-            historyTable[i] /= 2
-        }
-    }
-
-    fun resetHistory() {
-        for (i in historyTable.indices) {
-            historyTable[i] = 0
-        }
     }
 
     fun perft(plyFromRoot: Int, depth: Int): Long {
@@ -705,8 +683,6 @@ class Engine {
         val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
 
         val LMR_TABLE = IntArray(MAX_SEARCH_PLY * 128)
-
-        const val HISTORY_MAX = 1 shl 16
 
         init {
             for (depth in 1..<MAX_SEARCH_PLY) {

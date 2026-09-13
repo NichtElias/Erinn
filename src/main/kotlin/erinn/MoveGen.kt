@@ -1,6 +1,6 @@
 package party.elias.erinn
 
-class MoveGen(val position: Board, val engine: Engine) {
+class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
     var stage: Stage = Stage.HASH
 
     val quietMoves: ScoredMoveContainer = ScoredMoveContainer(192)
@@ -174,11 +174,10 @@ class MoveGen(val position: Board, val engine: Engine) {
                             ) { target ->
                                 val move = Move(src, target, Piece.NONE)
                                 if (!position.putsCurrentPlayerInCheck(move)) {
-                                    val idx = position.turn.idx * 64 * 64 + move.src.v * 64 + move.dst.v
-
                                     quietMoves.addWithScore(
                                         move,
-                                        engine.historyTable[idx].toFloat()
+                                        engine.historyTables.getValue(position.turn, engine.searchStack,
+                                            plyFromRoot, move, piece.type).toFloat()
                                     )
                                 }
                             }
@@ -197,22 +196,20 @@ class MoveGen(val position: Board, val engine: Engine) {
                             if (src.rank == position.turn.pawnStartingRank() && position.pieces[doublePushSquare.v] == Piece.NONE) {
                                 val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
                                 if (!position.putsCurrentPlayerInCheck(doublePushMove)) {
-                                    val idx = position.turn.idx * 64 * 64 + doublePushMove.src.v * 64 + doublePushMove.dst.v
-
                                     quietMoves.addWithScore(
                                         doublePushMove,
-                                        engine.historyTable[idx].toFloat()
+                                        engine.historyTables.getValue(position.turn, engine.searchStack,
+                                            plyFromRoot, doublePushMove, PieceType.PAWN).toFloat()
                                     )
                                 }
                             }
 
                             // generate single push
                             if (!position.putsCurrentPlayerInCheck(singlePushMove)) {
-                                val idx = position.turn.idx * 64 * 64 + singlePushMove.src.v * 64 + singlePushMove.dst.v
-
                                 quietMoves.addWithScore(
                                     singlePushMove,
-                                    engine.historyTable[idx].toFloat()
+                                    engine.historyTables.getValue(position.turn, engine.searchStack,
+                                        plyFromRoot, singlePushMove, PieceType.PAWN).toFloat()
                                 )
                             }
                         }
