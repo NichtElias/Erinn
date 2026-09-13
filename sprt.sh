@@ -10,8 +10,8 @@ args=(
   -autosaveinterval 0 -config outname=fastchess-config.json
 #  -log engine=true file=fastchess.log
   -draw movenumber=40 movecount=10 score=15
-  -resign movecount=4 score=700
-  -each cmd="$java_path" tc=4+0.04 option.Hash=8
+#  -resign movecount=4 score=700
+  -each cmd="$java_path" tc=8+0.08 option.Hash=16
   -engine name="$1" args="-Xmx300M -jar $testbench/Erinn-$1.jar"
   -engine name="$2" args="-Xmx300M -jar $testbench/Erinn-$2.jar"
 )
