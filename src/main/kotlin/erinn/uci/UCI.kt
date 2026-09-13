@@ -20,6 +20,7 @@ import kotlin.math.ceil
 import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.system.exitProcess
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.DurationUnit
@@ -177,8 +178,13 @@ fun run() {
                 }
 
                 searchScope.launch {
-                    val (move, score) = engine.iterDeep(limits)
-                    println("bestmove ${move.toUci()}")
+                    try {
+                        val (move, score) = engine.iterDeep(limits)
+                        println("bestmove ${move.toUci()}")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        exitProcess(1)
+                    }
 
                     searchTimer.cancel()
                 }
