@@ -256,6 +256,13 @@ class Engine {
                 firstIsKiller = true
             }
 
+            val isRecapture = if (plyFromRoot >= 1) {
+                val prevMove = searchStack[plyFromRoot - 1].move
+
+                (prevMove.capture != Piece.NONE && move.capture != Piece.NONE
+                    && position.seeWithThreshold(move, Board.SEE_MATERIAL_VALUES[prevMove.capture.type.idx]))
+            } else false
+
             val putsInCheck = position.putsOpponentInCheck(move)
 
             if (futilityPruning
@@ -310,11 +317,11 @@ class Engine {
             var score: Score
 
             searchStack[plyFromRoot + 1].pvLength = 0
-            score = -pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
+            score = -pvs(moveCount, plyFromRoot, remainingDepth + if (isPV && isRecapture) 1 else 0, reduction, limits, beta, alpha, isPV)
 
             if (reduction > 0 && score > alpha) {
                 reduction = 0
-                score = -pvs(moveCount, plyFromRoot, remainingDepth, reduction, limits, beta, alpha, isPV)
+                score = -pvs(moveCount, plyFromRoot, remainingDepth + if (isPV && isRecapture) 1 else 0, reduction, limits, beta, alpha, isPV)
             }
 
             position.undoMove(move, plyFromRoot)
