@@ -33,17 +33,24 @@ object NNUE {
         7, 7, 7, 7, 7, 7, 7, 7
     )
 
-    fun load() {
+    var isInitialized = false
 
-        val bytes = NNUE.javaClass.classLoader.getResourceAsStream("model_768x8_hm_128_screlu_v12.bin")?.readAllBytes()
-        val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
+    fun init() {
 
-        buffer.get(ftBiases)
-        for (i in 0..<FEATURE_NUM) {
-            buffer.get(ftWeights[i])
+        if (!isInitialized) {
+            val bytes =
+                NNUE.javaClass.classLoader.getResourceAsStream("model_768x8_hm_128_screlu_v12.bin")?.readAllBytes()
+            val buffer = ByteBuffer.wrap(bytes).asIntBuffer()
+
+            buffer.get(ftBiases)
+            for (i in 0..<FEATURE_NUM) {
+                buffer.get(ftWeights[i])
+            }
+            buffer.get(outBiases)
+            buffer.get(outWeights)
+
+            isInitialized = true
         }
-        buffer.get(outBiases)
-        buffer.get(outWeights)
     }
 
     val accClamped = IntArray(ACC_HALF_SIZE * 2)

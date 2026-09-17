@@ -2,7 +2,7 @@ package party.elias.erinn
 
 import party.elias.erinn.nnue.AccumulatorStack
 import party.elias.erinn.nnue.NNUE
-import party.elias.erinn.uci.sendUciInfo
+import party.elias.erinn.uci.UCIEngine
 import java.io.File
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
@@ -476,7 +476,7 @@ class Engine {
 
             val elapsed = TimeSource.Monotonic.markNow() - searchStartTime
             if (printInfo)
-                sendUciInfo(d, elapsed, nodesSearched, result.score, getPv(), tt.fullPerMill())
+                UCIEngine.sendUciInfo(d, elapsed, nodesSearched, result.score, getPv(), tt.fullPerMill())
 
             if (elapsed > limits.softTime
                 || nodesSearched >= limits.softNodes
