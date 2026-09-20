@@ -72,6 +72,9 @@ object UCIEngine {
                 val fenArg = args["fen"]
                 val movesArg = args["moves"]
 
+                engine.searchStack.resetKillers()
+                engine.historyTables.age()
+
                 var startingFen = ""
                 if (args.containsKey("startpos")) {
                     startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
