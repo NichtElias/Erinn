@@ -4,6 +4,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
     var stage: Stage = Stage.HASH
 
     val quietMoves: ScoredMoveContainer = ScoredMoveContainer(192)
+    val badQuietMoves: ScoredMoveContainer = ScoredMoveContainer(192)
     val goodCaptures: ScoredMoveContainer = ScoredMoveContainer(32)
     val badCaptures: ScoredMoveContainer = ScoredMoveContainer(16)
     var currentMoveContainer: ScoredMoveContainer = quietMoves
@@ -19,6 +20,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
         stage = Stage.HASH
 
         quietMoves.reset()
+        badQuietMoves.reset()
         goodCaptures.reset()
         badCaptures.reset()
         currentMoveContainer = quietMoves
@@ -40,15 +42,22 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
             // if there's still at least one buffered move, return it
             if (currentMoveContainer.hasNext()) {
 
-                val move = currentMoveContainer.selectMove(
-                    stage.sorted && (!(stage == Stage.GOOD_CAPTURES || stage == Stage.BAD_CAPTURES) || doSEE)
-                )
+                val move = currentMoveContainer.selectMove(stage.sorted)
 
-                if (!currentMoveContainer.hasNext()) {
-                    // if it was the last one, go to next stage
+                if (stage == Stage.GOOD_QUIET && currentMoveContainer.scores[currentMoveContainer.index - 1] < GOOD_QUIET_THRESHOLD) {
+                    val firstBadMoveIndex = currentMoveContainer.index - 1
+                    currentMoveContainer.moves.array.copyInto(badQuietMoves.moves.array, startIndex = firstBadMoveIndex, endIndex = currentMoveContainer.size)
+                    currentMoveContainer.scores.copyInto(badQuietMoves.scores, startIndex = firstBadMoveIndex, endIndex = currentMoveContainer.size)
+                    badQuietMoves.size = currentMoveContainer.size - firstBadMoveIndex
+                    badQuietMoves.index = 0
                     nextStage()
+                } else {
+                    if (!currentMoveContainer.hasNext()) {
+                        // if it was the last one, go to next stage
+                        nextStage()
+                    }
+                    return move
                 }
-                return move
             }
 
             // there was no buffered move to be returned, so we need to refill the buffer now
@@ -150,7 +159,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                     }
                 }
 
-                Stage.QUIET -> if (genQuiets) {
+                Stage.GOOD_QUIET -> if (genQuiets) {
                     currentMoveContainer = quietMoves
 
                     // generate castling moves
@@ -218,6 +227,10 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
 
                 Stage.BAD_CAPTURES -> {
                     currentMoveContainer = badCaptures
+                }
+
+                Stage.BAD_QUIET -> {
+                    currentMoveContainer = badQuietMoves
                 }
 
                 Stage.EVASION_HASH -> {
@@ -338,6 +351,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
 
     companion object {
         const val GOOD_CAPTURE_THRESHOLD = 0
+        const val GOOD_QUIET_THRESHOLD = -(4*4) * 3
 
         val KNIGHT_ATTACKS: LongArray = LongArray(64) { idx ->
             relativeMoves(
@@ -441,14 +455,15 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
         GOOD_CAPTURES,
         KILLER,
         NC_PROM,
+        GOOD_QUIET(true),
         BAD_CAPTURES,
-        QUIET(true),
+        BAD_QUIET(true),
 
         EVASION_HASH,
         EVASION;
 
         fun hasNext(): Boolean {
-            return this != QUIET && this != EVASION
+            return this != BAD_QUIET && this != EVASION
         }
 
         fun next(): Stage {
