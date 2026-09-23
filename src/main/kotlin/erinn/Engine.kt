@@ -530,6 +530,8 @@ class Engine {
     fun perft(plyFromRoot: Int, depth: Int): Long {
         if (depth == 0) return 1L
 
+        val sse = searchStack[plyFromRoot]
+
         var nodes = 0L
         val moveGen = moveGens[plyFromRoot]
         moveGen.begin(inCheck = position.isColorInCheck(position.turn))
@@ -537,6 +539,9 @@ class Engine {
         while (true) {
             val move = moveGen.nextMove()
             if (move.isNull()) break
+
+            sse.move = move
+            sse.movingPieceType = position.pieces[move.src.v].type
 
             position.doMove(move, plyFromRoot)
             nodes += perft(plyFromRoot + 1, depth - 1)

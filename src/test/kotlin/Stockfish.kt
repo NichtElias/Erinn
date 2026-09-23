@@ -1,5 +1,5 @@
 import party.elias.erinn.Move
-import party.elias.erinn.uci.uciPositionCmd
+import party.elias.erinn.uci.UCIEngine
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -20,7 +20,7 @@ class Stockfish {
     }
 
     fun setPosition(fen: String, moves: List<Move>) {
-        send(uciPositionCmd(fen, moves))
+        send(UCIEngine.uciPositionCmd(fen, moves))
     }
 
     fun perft(depth: Int): Map<String, Long> {
