@@ -578,7 +578,12 @@ class Board {
 
         if (piece.type == PieceType.PAWN && move.capture == Piece.NONE) {
             val front = Square(move.src.v + MoveGen.PAWN_DIRECTIONS[turn.idx])
-            if (move.dst == front) return true // this is just a normal pawn push
+            if (move.dst == front) {
+                if (move.src.rank == piece.color.opponent.pawnStartingRank()) {
+                    return move.promotion != PieceType.NONE // non-capture pawn promotion
+                }
+                return true // this is just a normal pawn push
+            }
 
             if (move.src.rank != turn.pawnStartingRank()) return false // can't do double push if not on starting rank
             if (pieces[front.v] != Piece.NONE) return false // can't do double push if there's something in the way
@@ -588,7 +593,15 @@ class Board {
             val validTargetSquares = (attacksOf(move.src, piece.type, piece.color)
                     and colorsBB[turn.idx].inv())
 
-            return validTargetSquares and move.dst.bb() != 0L
+            if (validTargetSquares and move.dst.bb() == 0L) return false // cannot move here
+
+            if (piece.type == PieceType.PAWN // this implies a capture as well, because we checked pawn and !capture earlier
+                && move.src.rank == piece.color.opponent.pawnStartingRank()
+            ) {
+                return move.promotion != PieceType.NONE // capture promotion
+            }
+
+            return true // normal capture
         }
     }
 
