@@ -1,16 +1,7 @@
 package party.elias.erinn.uci
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import party.elias.erinn.Board
-import party.elias.erinn.Color
-import party.elias.erinn.Engine
-import party.elias.erinn.Limits
-import party.elias.erinn.Move
-import party.elias.erinn.Score
+import kotlinx.coroutines.*
+import party.elias.erinn.*
 import party.elias.erinn.nnue.NNUE
 import party.elias.erinn.uci.Option.Type
 import java.io.File
@@ -77,7 +68,7 @@ object UCIEngine {
 
                 var startingFen = ""
                 if (args.containsKey("startpos")) {
-                    startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+                    startingFen = Board.STARTING_FEN
                 }
 
                 if (fenArg != null) {

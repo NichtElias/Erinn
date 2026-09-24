@@ -2,7 +2,6 @@ package party.elias.erinn
 
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.text.iterator
 
 class Board {
     val piecesBB: BitboardArray = BitboardArray(6)
@@ -759,6 +758,8 @@ class Board {
         private val BINARY_POSITION_EMPTY_MARKERS = intArrayOf(0b0101, 0b0110, 0b0111, 0b1101, 0b1110, 0b1111)
 
         val SEE_MATERIAL_VALUES = intArrayOf(100, 300, 300, 500, 900, 20000)
+        
+        const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
         fun fromFen(fen: String): Board {
             val board = Board()
@@ -828,7 +829,7 @@ class Board {
         }
 
         fun startPos(): Board {
-            return fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            return fromFen(STARTING_FEN)
         }
     }
 

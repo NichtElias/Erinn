@@ -1,10 +1,6 @@
 package party.elias.erinn.nnue
 
-import party.elias.erinn.Board
-import party.elias.erinn.Color
-import party.elias.erinn.Piece
-import party.elias.erinn.PieceArray
-import party.elias.erinn.Square
+import party.elias.erinn.*
 
 abstract class Accumulator {
     val contents: IntArray = IntArray(NNUE.ACC_HALF_SIZE)

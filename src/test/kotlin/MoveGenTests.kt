@@ -9,7 +9,7 @@ class MoveGenTests {
 
     @Test
     fun startPos() {
-        perftCompare(4, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        perftCompare(4, Board.STARTING_FEN)
     }
 
     @Test
@@ -56,7 +56,7 @@ class MoveGenTests {
                 }
             }
 
-            if (!wrongMoves.isEmpty()) throw AssertionError("generated illegal moves $wrongMoves at '${engine.position.toFen()}'")
+            if (wrongMoves.isNotEmpty()) throw AssertionError("generated illegal moves $wrongMoves at '${engine.position.toFen()}'")
 
             // check for missing moves
             val missingMoves: ArrayList<String> = ArrayList()
@@ -66,7 +66,7 @@ class MoveGenTests {
                 }
             }
 
-            if (!missingMoves.isEmpty()) throw AssertionError("missing moves $missingMoves at '${engine.position.toFen()}'")
+            if (missingMoves.isNotEmpty()) throw AssertionError("missing moves $missingMoves at '${engine.position.toFen()}'")
 
             // moves match at this depth, time to check where to search deeper
             for ((move, count) in engineResults) {

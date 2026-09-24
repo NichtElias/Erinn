@@ -1,12 +1,6 @@
 package party.elias.erinn.nnue
 
-import party.elias.erinn.Board
-import party.elias.erinn.Color
-import party.elias.erinn.Engine
-import party.elias.erinn.Move
-import party.elias.erinn.Piece
-import party.elias.erinn.PieceType
-import party.elias.erinn.Square
+import party.elias.erinn.*
 
 class AccumulatorStack {
     val stack: Array<AccPair> = Array(Engine.MAX_SEARCH_PLY) { AccPair() }
@@ -75,7 +69,7 @@ class AccumulatorStack {
     fun postDoMove(plyFromRoot: Int, board: Board, doFullRefresh: Boolean) {
         val accPair = stack[plyFromRoot + 1]
 
-        // because this is called after doMove, board.turn is already the other player, do we need to do .opponent
+        // because this is called after doMove, board.turn is already the other player, so we need to do .opponent
         val colorToRefresh = board.turn.opponent
 
         if (doFullRefresh) {

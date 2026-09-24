@@ -5,11 +5,7 @@ import party.elias.erinn.nnue.NNUE
 import party.elias.erinn.uci.UCIEngine
 import java.io.File
 import kotlin.concurrent.Volatile
-import kotlin.math.abs
-import kotlin.math.exp
-import kotlin.math.ln
-import kotlin.math.min
-import kotlin.math.sign
+import kotlin.math.*
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -358,9 +354,8 @@ class Engine {
                         sse.movingPieceType, remainingDepth * remainingDepth)
 
                     // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
-                    val compactMove = move
                     for (i in 0..<moveGen.quietMoves.size) {
-                        if (moveGen.quietMoves.moves[i] == compactMove) {
+                        if (moveGen.quietMoves.moves[i] == move) {
                             break
                         }
 

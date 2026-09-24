@@ -1,7 +1,5 @@
 package party.elias.erinn
 
-import kotlin.jvm.JvmInline
-
 @JvmInline
 value class Color(val v: Int) { // WHITE = 0b1000, BLACK = 0b0000
     val opponent: Color get() = Color(v.inv() and 8)

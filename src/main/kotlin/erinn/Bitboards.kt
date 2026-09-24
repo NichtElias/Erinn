@@ -128,18 +128,6 @@ object Bitboards {
     const val LIGHT_SQUARES: Bitboard = 0x55aa55aa55aa55aa
     const val DARK_SQUARES: Bitboard = LIGHT_SQUARES.inv()
 
-    val LEFT_RIGHT: BitboardArray = longArrayOf(
-        FILE_A or FILE_B or FILE_C or FILE_D,
-        FILE_E or FILE_F or FILE_G or FILE_H
-    )
-
-    val QUADRANTS: BitboardArray = longArrayOf(
-        LEFT_RIGHT[0] and (RANK_1 or RANK_2 or RANK_3 or RANK_4),
-        LEFT_RIGHT[1] and (RANK_1 or RANK_2 or RANK_3 or RANK_4),
-        LEFT_RIGHT[0] and (RANK_5 or RANK_6 or RANK_7 or RANK_8),
-        LEFT_RIGHT[1] and (RANK_5 or RANK_6 or RANK_7 or RANK_8),
-    )
-
     val PAWN_MOVEABLE_AREAS: BitboardArray = longArrayOf(
         RANK_8.inv() and RANK_7.inv(), // black
         RANK_1.inv() and RANK_2.inv() // white

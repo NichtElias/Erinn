@@ -1,7 +1,5 @@
 package party.elias.erinn
 
-import kotlin.jvm.JvmInline
-
 @JvmInline
 value class Square(val v: Int) {
     constructor(rank: Int, file: Int) : this(rank * 8 + file)
