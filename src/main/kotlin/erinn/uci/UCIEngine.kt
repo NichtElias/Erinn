@@ -22,201 +22,176 @@ object UCIEngine {
         Options // ensure the options are initialized by loading the object
     }
 
-    val commands: List<Command> = listOf(
-        Command("uci")
-            .withHandler {
-                println("id name Erinn 1.1")
-                println("id author NichtElias")
-                options.forEach {
-                    println(it.getUCIMessage())
-                }
-                println("uciok")
-            },
+    fun handleUci(cmd: Command) {
+        println("id name Erinn 1.1")
+        println("id author NichtElias")
+        options.forEach {
+            println(it.getUCIMessage())
+        }
+        println("uciok")
+    }
 
-        Command("setoption")
-            .with(Parameter("name"))
-            .with(Parameter("value"))
-            .withHandler { args ->
-                if (args["name"].isNullOrEmpty()) return@withHandler
+    fun handleSetOption(cmd: Command) {
+        val name = cmd.getGreedyKeywordArgString("name", setOf("value"))
 
-                val option = options.find { option -> option.name == args["name"]!!.getOrNull(0) }
+        if (name == null || name == "")
+            return
 
-                option?.set(args["value"]?.getOrNull(0))
-            },
+        val option = options.find { option -> option.name == name }
 
-        Command("isready")
-            .withHandler {
-                NNUE.init()
-                println("readyok")
-            },
+        option?.set(cmd.getGreedyKeywordArgString("value", setOf("name")))
+    }
 
-        Command("ucinewgame")
-            .withHandler {
-                engine.tt.clear()
-            },
+    fun handleIsReady(cmd: Command) {
+        NNUE.init()
+        println("readyok")
+    }
 
-        Command("position")
-            .with(Parameter("startpos", 0))
-            .with(Parameter("fen", 6))
-            .with(Parameter("moves", -1))
-            .withHandler { args ->
-                val fenArg = args["fen"]
-                val movesArg = args["moves"]
+    fun handleUciNewGame(cmd: Command) {
+        engine.tt.clear()
+    }
 
-                engine.searchStack.resetKillers()
-                engine.historyTables.age()
+    fun handlePosition(cmd: Command) {
+        val fenArg = cmd.getGreedyKeywordArgString("fen", setOf("moves"))
+        val movesArg = cmd.getGreedyKeywordArg("moves", setOf("fen"))
 
-                var startingFen = ""
-                if (args.containsKey("startpos")) {
-                    startingFen = Board.STARTING_FEN
-                }
+        engine.searchStack.resetKillers()
+        engine.historyTables.age()
 
-                if (fenArg != null) {
-                    startingFen = fenArg.joinToString(separator = " ")
-                }
+        var startingFen = ""
+        if (cmd.hasFlag("startpos")) {
+            startingFen = Board.STARTING_FEN
+        }
 
-                engine.position = Board.fromFen(startingFen)
+        if (!fenArg.isNullOrBlank()) {
+            startingFen = fenArg
+        }
 
-                movesArg?.forEach {
-                    engine.position.doMove(Move.fromUci(it, engine.position), Engine.MAX_SEARCH_PLY)
-                }
-            },
+        engine.position = Board.fromFen(startingFen)
 
-        Command("go")
-            .with(Parameter("perft"))
-            .with(Parameter("depth"))
-            .with(Parameter("nodes"))
-            .with(Parameter("wtime"))
-            .with(Parameter("btime"))
-            .with(Parameter("winc"))
-            .with(Parameter("binc"))
-            .with(Parameter("movetime"))
-            .withHandler { args ->
-                val perftArg = args["perft"]
-                val depthArg = getSingleIntArg(args["depth"], 48)
-                val nodesArg = getSingleLongArg(args["nodes"], Long.MAX_VALUE)
-                val wTimeArg = getSingleIntArg(args["wtime"], -1)
-                val bTimeArg = getSingleIntArg(args["btime"], -1)
-                val wIncArg = getSingleIntArg(args["winc"], 0)
-                val bIncArg = getSingleIntArg(args["binc"], 0)
-                val moveTimeArg = getSingleIntArg(args["movetime"], -1)
+        movesArg?.forEach {
+            engine.position.doMove(Move.fromUci(it, engine.position), Engine.MAX_SEARCH_PLY)
+        }
+    }
 
-                if (perftArg != null) {
-                    if (perftArg.isEmpty()) return@withHandler
+    fun handleGo(cmd: Command) {
+        val perftArg = cmd.getKeywordArg("perft")
+        val depthArg = cmd.getKeywordArg("depth")?.toIntOrNull() ?: 48
+        val nodesArg = cmd.getKeywordArg("nodes")?.toLongOrNull() ?: Long.MAX_VALUE
+        val wTimeArg = cmd.getKeywordArg("wtime")?.toIntOrNull() ?: -1
+        val bTimeArg = cmd.getKeywordArg("btime")?.toIntOrNull() ?: -1
+        val wIncArg = cmd.getKeywordArg("winc")?.toIntOrNull() ?: 0
+        val bIncArg = cmd.getKeywordArg("binc")?.toIntOrNull() ?: 0
+        val moveTimeArg = cmd.getKeywordArg("movetime")?.toIntOrNull() ?: -1
 
-                    val results = engine.perftDivide(perftArg.first().toInt())
+        if (perftArg != null) {
+            val perftDepth = perftArg.toIntOrNull() ?: return
 
-                    var total = 0L
-                    for ((move, nodes) in results) {
-                        println("${move.toUci()}: $nodes")
-                        total += nodes
-                    }
-                    println()
-                    println("Nodes searched: $total")
-                    println()
-                } else {
-                    val ourTime = if (engine.position.turn == Color.BLACK) bTimeArg else wTimeArg
-                    val ourInc = if (engine.position.turn == Color.BLACK) bIncArg else wIncArg
+            val results = engine.perftDivide(perftDepth)
 
-                    var softTime = Duration.INFINITE
-                    var hardTime = Duration.INFINITE
-
-                    if (moveTimeArg != -1) {
-                        softTime = moveTimeArg.milliseconds
-                        hardTime = moveTimeArg.milliseconds
-                    } else if (ourTime != -1) {
-                        softTime = (ourTime / 35 + ourInc / 2).milliseconds
-                        hardTime = max(ourTime * 70 / 100 - Options.moveTimeBuffer.value, 0).milliseconds
-                    }
-
-                    val limits = Limits(
-                        depthArg,
-                        hardNodes = nodesArg,
-                        softTime = softTime,
-                        hardTime = hardTime
-                    )
-
-                    val searchTimer = searchScope.launch {
-                        delay(limits.hardTime)
-                        engine.stop = true
-                    }
-
-                    searchScope.launch {
-                        try {
-                            val (move, score) = engine.iterDeep(limits)
-                            println("bestmove ${move.toUci()}")
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            exitProcess(1)
-                        }
-
-                        searchTimer.cancel()
-                    }
-                }
-            },
-
-        Command("stop")
-            .withHandler {
-                engine.stop = true
-            },
-
-        Command("quit")
-            .withHandler {
-                running = false
-            },
-
-        Command("show")
-            .with(Parameter("fen", 0))
-            .withHandler { args ->
-                if (args.containsKey("fen")) {
-                    println(engine.position.toFen())
-                } else {
-                    print(engine.position.toString())
-
-                    if (engine.position.isDrawByRepetition()) {
-                        println("draw by threefold repetition")
-                    }
-                }
-            },
-
-        Command("eval")
-            .withHandler {
-                engine.accStack.init(engine.position)
-                println(scoreString(engine.evaluate(0)))
-            },
-
-        Command("genpos")
-            .with(Parameter("nodes"))
-            .with(Parameter("games"))
-            .with(Parameter("seed"))
-            .with(Parameter("file", -1))
-            .withHandler { args ->
-                val nodesArg = getSingleLongArg(args["nodes"], -1)
-                val gamesArg = getSingleIntArg(args["games"], -1)
-                val seedArg = args["seed"]
-                val fileArg = args["file"]
-
-                if (nodesArg < 0 || gamesArg < 0 || seedArg == null || fileArg == null) return@withHandler
-
-                val filePath = fileArg.joinToString(separator = " ")
-
-                engine.genEvalPosFromSelfPlayGames(
-                    getSingleIntArg(seedArg, 0),
-                    nodesArg,
-                    gamesArg,
-                    File(filePath)
-                )
-
-                println("genposdone")
+            var total = 0L
+            for ((move, nodes) in results) {
+                println("${move.toUci()}: $nodes")
+                total += nodes
             }
-    )
+            println()
+            println("Nodes searched: $total")
+            println()
+        } else {
+            val ourTime = if (engine.position.turn == Color.BLACK) bTimeArg else wTimeArg
+            val ourInc = if (engine.position.turn == Color.BLACK) bIncArg else wIncArg
 
+            var softTime = Duration.INFINITE
+            var hardTime = Duration.INFINITE
+
+            if (moveTimeArg != -1) {
+                softTime = moveTimeArg.milliseconds
+                hardTime = moveTimeArg.milliseconds
+            } else if (ourTime != -1) {
+                softTime = (ourTime / 35 + ourInc / 2).milliseconds
+                hardTime = max(ourTime * 70 / 100 - Options.moveTimeBuffer.value, 0).milliseconds
+            }
+
+            val limits = Limits(
+                depthArg,
+                hardNodes = nodesArg,
+                softTime = softTime,
+                hardTime = hardTime
+            )
+
+            val searchTimer = searchScope.launch {
+                delay(limits.hardTime)
+                engine.stop = true
+            }
+
+            searchScope.launch {
+                try {
+                    val (move, score) = engine.iterDeep(limits)
+                    println("bestmove ${move.toUci()}")
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    exitProcess(1)
+                }
+
+                searchTimer.cancel()
+            }
+        }
+    }
+
+    fun handleStop(cmd: Command) {
+        engine.stop = true
+    }
+
+    fun handleQuit(cmd: Command) {
+        running = false
+    }
+
+    fun handleShow(cmd: Command) {
+        if (cmd.hasFlag("fen")) {
+            println(engine.position.toFen())
+        } else {
+            print(engine.position.toString())
+
+            if (engine.position.isDrawByRepetition()) {
+                println("draw by threefold repetition")
+            }
+        }
+    }
+
+    fun handleEval(cmd: Command) {
+        engine.accStack.init(engine.position)
+        println(scoreString(engine.evaluate(0)))
+    }
+
+    fun handleGenPos(cmd: Command) {
+        val nodesArg = cmd.getKeywordArg("nodes")?.toLongOrNull()
+        val gamesArg = cmd.getKeywordArg("games")?.toIntOrNull()
+        val seedArg = cmd.getKeywordArg("seed")?.toIntOrNull()
+        val fileArg = cmd.getGreedyKeywordArgString("file", setOf("nodes", "games", "seed"))
+
+        if (nodesArg == null || gamesArg == null || seedArg == null || fileArg == null) return
+
+        engine.genEvalPosFromSelfPlayGames(
+            seedArg,
+            nodesArg,
+            gamesArg,
+            File(fileArg)
+        )
+
+        println("genposdone")
+    }
 
     fun run() {
         while (running) {
-            val cmdTokens = readln().trim().split(" ")
+            val cmd = Command(readln())
 
-            commands.find { it.name == cmdTokens[0] }?.parseAndHandle(cmdTokens)
+            val commandDefinition = try {
+                CommandDefinition.valueOf(cmd.command.uppercase())
+            } catch (e: IllegalArgumentException) {
+                continue
+            }
+
+            commandDefinition.handler.accept(cmd)
         }
     }
 
@@ -259,17 +234,6 @@ object UCIEngine {
             }
             println("info depth $depth time ${time.toInt(DurationUnit.MILLISECONDS)} nodes $nodes score $scoreStr nps $nps hashfull $ttFullPerMill pv$pvStr")
         }
-    }
-
-
-    private fun getSingleIntArg(arg: List<String>?, default: Int): Int {
-        if (arg.isNullOrEmpty()) return default
-        return arg.first().toInt()
-    }
-
-    private fun getSingleLongArg(arg: List<String>?, default: Long): Long {
-        if (arg.isNullOrEmpty()) return default
-        return arg.first().toLong()
     }
 
     private fun <T> registerOption(option: Option<T>): Option<T> {

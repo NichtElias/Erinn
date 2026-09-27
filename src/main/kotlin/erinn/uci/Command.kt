@@ -1,47 +1,39 @@
 package party.elias.erinn.uci
 
-class Command(val name: String) {
-    val params: ArrayList<Parameter> = ArrayList()
-    var handler: CommandHandler? = null
+class Command(cmdString: String) {
+    val tokens: List<String> = cmdString.trim().split(" ")
+    val command: String = tokens.getOrNull(0) ?: ""
+    val args: List<String> = if (tokens.isNotEmpty()) tokens.subList(1, tokens.size) else emptyList()
 
-    fun with(parameter: Parameter): Command {
-        params.add(parameter)
-        return this
+    fun hasFlag(flag: String): Boolean = args.contains(flag)
+
+    fun getKeywordArg(name: String): String? {
+        val index = args.indexOf(name)
+        if (index != -1 && index + 1 < args.size) {
+            return args[index + 1]
+        }
+        return null
     }
 
-    fun withHandler(handler: CommandHandler): Command {
-        this.handler = handler
-        return this
-    }
+    fun getGreedyKeywordArg(name: String, stopTokens: Set<String> = emptySet()): List<String>? {
+        val index = args.indexOf(name)
+        if (index == -1) return null
+        if (index + 1 >= args.size) return emptyList()
 
-    fun parseAndHandle(tokens: List<String>) {
-        val ctx = ParseContext(this, tokens, 1)
+        val resultParts = mutableListOf<String>()
 
-        val args: HashMap<String, List<String>> = HashMap()
-
-        while (!ctx.hasReachedEnd()) {
-            val token = ctx.nextToken()
-            val param = params.find { p -> p.name == token }
-
-            if (param == null) continue
-
-            args[param.name] = param.parse(ctx)
+        for (i in (index + 1) until args.size) {
+            val token = args[i]
+            if (stopTokens.contains(token)) {
+                break
+            }
+            resultParts.add(token)
         }
 
-        handler?.handle(args)
+        return resultParts
     }
 
-    fun hasParameterWithName(name: String): Boolean {
-        return params.any { p -> p.name == name }
-    }
-
-    class ParseContext(val command: Command, var tokens: List<String>, var index: Int) {
-        fun nextToken(): String {
-            return tokens[index++]
-        }
-
-        fun hasReachedEnd(): Boolean {
-            return index >= tokens.size
-        }
+    fun getGreedyKeywordArgString(name: String, stopTokens: Set<String> = emptySet()): String? {
+        return getGreedyKeywordArg(name, stopTokens)?.joinToString(" ")
     }
 }
