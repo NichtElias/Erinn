@@ -167,6 +167,8 @@ class Engine {
 
         val sse = searchStack[plyFromRoot]
 
+        sse.move = Move.NULL_MOVE
+        sse.movingPieceType = PieceType.NONE
         sse.staticEval = if (!inCheck)
             if (ttValue.v != 0L && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
         else INVALID_SCORE
@@ -255,7 +257,7 @@ class Engine {
             val isRecapture = if (plyFromRoot >= 1) {
                 val prevMove = searchStack[plyFromRoot - 1].move
 
-                (prevMove.capture != Piece.NONE && move.capture != Piece.NONE
+                (!prevMove.isNull() && prevMove.capture != Piece.NONE && move.capture != Piece.NONE
                     && position.seeWithThreshold(move, Board.SEE_MATERIAL_VALUES[prevMove.capture.type.idx]))
             } else false
 

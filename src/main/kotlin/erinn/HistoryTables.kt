@@ -8,7 +8,7 @@ class HistoryTables {
 
     fun update(color: Color, searchStack: SearchStack, plyFromRoot: Int, move: Move, movingPieceType: PieceType, bonus: Int) {
         updateMain(color, move, bonus)
-        if (plyFromRoot >= 1)
+        if (plyFromRoot >= 1 && !searchStack[plyFromRoot - 1].move.isNull())
             updateCont(color, searchStack[plyFromRoot - 1], move, movingPieceType, bonus)
     }
 
@@ -29,7 +29,7 @@ class HistoryTables {
     fun getValue(color: Color, searchStack: SearchStack, plyFromRoot: Int, move: Move, movingPieceType: PieceType): Int {
         var value = mainTable[getMainIdx(color, move)]
 
-        if (plyFromRoot >= 1)
+        if (plyFromRoot >= 1 && !searchStack[plyFromRoot - 1].move.isNull())
             value += contTable[getContIdx(color, searchStack[plyFromRoot - 1], move, movingPieceType)]
 
         return value
