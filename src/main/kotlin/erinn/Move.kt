@@ -33,6 +33,8 @@ value class Move(val v: Int) {
     }
 
     fun toUci(): String {
+        if (isNull()) return "0000"
+
         val srcUci = src.toUci()
         val dstUci = dst.toUci()
 
