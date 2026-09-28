@@ -31,6 +31,14 @@ object UCIEngine {
         println("uciok")
     }
 
+    fun handleDebug(cmd: Command) {
+        if (cmd.hasFlag("on")) {
+            engine.debugMode = true
+        } else if (cmd.hasFlag("off")) {
+            engine.debugMode = false
+        }
+    }
+
     fun handleSetOption(cmd: Command) {
         val name = cmd.getGreedyKeywordArgString("name", setOf("value"))
 
@@ -246,8 +254,5 @@ object UCIEngine {
             engine.setHashTableSize(value)
         })
         val moveTimeBuffer = registerOption(Option("MoveTimeBuffer", Type.SPIN, 20, 0, 1000))
-        val debug = registerOption(Option("Debug", Type.CHECK, false) { value ->
-            engine.debugMode = value
-        })
     }
 }
