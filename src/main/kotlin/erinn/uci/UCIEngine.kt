@@ -23,7 +23,7 @@ object UCIEngine {
     }
 
     fun handleUci(cmd: Command) {
-        println("id name Erinn 1.1")
+        println("id name Erinn 2")
         println("id author NichtElias")
         options.forEach {
             println(it.getUCIMessage())
