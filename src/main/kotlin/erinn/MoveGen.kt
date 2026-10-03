@@ -186,7 +186,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                     quietMoves.addWithScore(
                                         move,
                                         engine.historyTables.getValue(position.turn, engine.searchStack,
-                                            plyFromRoot, move, piece.type).toFloat()
+                                            plyFromRoot, move, piece.type)
                                     )
                                 }
                             }
@@ -208,7 +208,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                     quietMoves.addWithScore(
                                         doublePushMove,
                                         engine.historyTables.getValue(position.turn, engine.searchStack,
-                                            plyFromRoot, doublePushMove, PieceType.PAWN).toFloat()
+                                            plyFromRoot, doublePushMove, PieceType.PAWN)
                                     )
                                 }
                             }
@@ -218,7 +218,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                 quietMoves.addWithScore(
                                     singlePushMove,
                                     engine.historyTables.getValue(position.turn, engine.searchStack,
-                                        plyFromRoot, singlePushMove, PieceType.PAWN).toFloat()
+                                        plyFromRoot, singlePushMove, PieceType.PAWN)
                                 )
                             }
                         }
@@ -471,11 +471,11 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
 
     class ScoredMoveContainer(
         val moves: MoveArray,
-        val scores: FloatArray,
+        val scores: IntArray,
         var size: Int,
         var index: Int
     ) {
-        constructor(capacity: Int) : this(MoveArray(capacity), FloatArray(capacity), 0, 0)
+        constructor(capacity: Int) : this(MoveArray(capacity), IntArray(capacity), 0, 0)
 
         fun reset() {
             size = 0
@@ -494,7 +494,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
             moves[size++] = move
         }
 
-        fun addWithScore(move: Move, score: Float) {
+        fun addWithScore(move: Move, score: Int) {
             scores[size] = score
             moves[size++] = move
         }
