@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "party.elias"
-version = "2"
+version = "dev"
 
 repositories {
     mavenCentral()
