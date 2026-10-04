@@ -62,7 +62,7 @@ class HistoryTables {
     }
 
     companion object {
-        const val HISTORY_MAX = 1 shl 16
+        const val HISTORY_MAX = 1 shl 14
         val CONT_PLIES = intArrayOf(1)
     }
 }

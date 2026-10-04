@@ -57,6 +57,7 @@ object UCIEngine {
 
     fun handleUciNewGame(cmd: Command) {
         engine.tt.clear()
+        engine.historyTables.reset()
     }
 
     fun handlePosition(cmd: Command) {
@@ -64,7 +65,7 @@ object UCIEngine {
         val movesArg = cmd.getGreedyKeywordArg("moves", setOf("fen"))
 
         engine.searchStack.resetKillers()
-        engine.historyTables.age()
+        //engine.historyTables.age()
 
         var startingFen = ""
         if (cmd.hasFlag("startpos")) {

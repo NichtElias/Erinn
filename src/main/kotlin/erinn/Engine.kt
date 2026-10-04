@@ -353,7 +353,7 @@ class Engine {
 
                     // apply history bonus for move that caused the cutoff
                     historyTables.update(position.turn, searchStack, plyFromRoot, move,
-                        sse.movingPieceType, remainingDepth * remainingDepth)
+                        sse.movingPieceType, min(200 * remainingDepth, 1200))
 
                     // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
                     for (i in 0..<moveGen.quietMoves.size) {
@@ -364,7 +364,7 @@ class Engine {
                         val earlierMove = moveGen.quietMoves.moves[i]
 
                         historyTables.update(position.turn, searchStack, plyFromRoot, earlierMove,
-                            position.pieces[earlierMove.src.v].type, - remainingDepth * remainingDepth)
+                            position.pieces[earlierMove.src.v].type, -min(200 * remainingDepth, 1200))
                     }
                 }
 
