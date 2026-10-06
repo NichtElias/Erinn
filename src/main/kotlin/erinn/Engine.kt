@@ -169,6 +169,7 @@ class Engine {
 
         sse.move = Move.NULL_MOVE
         sse.movingPieceType = PieceType.NONE
+        sse.searchedMoveCount = 0
         sse.staticEval = if (!inCheck)
             if (ttValue.v != 0L && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
         else INVALID_SCORE
@@ -330,6 +331,8 @@ class Engine {
                 return score
             }
 
+            sse.searchedMoves[sse.searchedMoveCount++] = move
+
             if (score > bestScore) {
                 if (debugMode && moveCount > 1) {
                     firstMoveWasBestMove = false
@@ -356,15 +359,17 @@ class Engine {
                         sse.movingPieceType, min(200 * remainingDepth, 1200))
 
                     // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
-                    for (i in 0..<moveGen.quietMoves.size) {
-                        if (moveGen.quietMoves.moves[i] == move) {
-                            break
+                    sse.forAllSearchedMoves { earlierMove ->
+                        if (earlierMove == move) {
+                            return@forAllSearchedMoves
                         }
 
-                        val earlierMove = moveGen.quietMoves.moves[i]
-
-                        historyTables.update(position.turn, searchStack, plyFromRoot, earlierMove,
-                            position.pieces[earlierMove.src.v].type, -min(200 * remainingDepth, 1200))
+                        if (earlierMove.capture == Piece.NONE && earlierMove.promotion == PieceType.NONE) {
+                            historyTables.update(
+                                position.turn, searchStack, plyFromRoot, earlierMove,
+                                position.pieces[earlierMove.src.v].type, -min(200 * remainingDepth, 1200)
+                            )
+                        }
                     }
                 }
 

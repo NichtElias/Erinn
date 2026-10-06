@@ -46,5 +46,13 @@ class SearchStack {
         var staticEval: Score = Engine.INVALID_SCORE
         var move: Move = Move.NULL_MOVE
         var movingPieceType: PieceType = PieceType.NONE
+        val searchedMoves: MoveArray = MoveArray(256)
+        var searchedMoveCount: Int = 0
+
+        inline fun forAllSearchedMoves(action: (move: Move) -> Unit) {
+            for (i in 0..<searchedMoveCount) {
+                action(searchedMoves[i])
+            }
+        }
     }
 }
