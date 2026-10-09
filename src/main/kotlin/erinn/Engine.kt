@@ -306,9 +306,9 @@ class Engine {
                 reduction = LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)]
                 reduction -= historyTables.getValue(position.turn, searchStack, plyFromRoot, move, sse.movingPieceType).sign * 512
 
-                reduction = (reduction / 1024).coerceIn(0, remainingDepth - 1)
+                if (isPV) reduction -= 2048
 
-                if (isPV) reduction /= 2
+                reduction = (reduction / 1024).coerceIn(0, remainingDepth - 1)
             }
 
             doMoveWithAccUpdate(plyFromRoot, move)
