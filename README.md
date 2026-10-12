@@ -1,14 +1,15 @@
 # Erinn
 Erinn is a UCI chess engine written in Kotlin. It is built for version 21 of the JVM.
 
-Version 1.1 is currently at ~2710 Elo on [CCRL](https://computerchess.org.uk/4040/cgi/engine_details.cgi?print=Details&each_game=0&eng=Erinn%201.1%2064-bit).
+Version 2 is currently at ~3170 Elo on [CCRL Blitz](https://computerchess.org.uk/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=Erinn%202%2064-bit#Erinn_2_64-bit),
+which makes it the strongest Kotlin chess engine on the ranking.
 
 ## How to Play
 
-1. As Erinn is a UCI engine, you will need a GUI like [En Croissant](https://encroissant.org/) or [Cute Chess](https://cutechess.com/).
-2. You can download a release version [here](https://github.com/NichtElias/Erinn/releases) or build it yourself by
+1. As Erinn is a UCI engine, you will need a GUI which supports the UCI protocol like [En Croissant](https://encroissant.org/) or [Cute Chess](https://cutechess.com/).
+2. You can download a release version of Erinn [here](https://github.com/NichtElias/Erinn/releases) or build it yourself by
 cloning the repo and running `./gradlew shadowJar`.
-3. Many GUIs only accept an executable file as am engine, so you may need to make a small shell script that runs `java -jar /path/to/Erinn-<version>.jar`.
+3. Many GUIs only accept an executable file as an engine, so you may need to make a small shell script that runs `java -jar /path/to/Erinn-<version>.jar`.
 
 ## Features
 **Search**:
