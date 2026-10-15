@@ -168,7 +168,7 @@ class Engine {
         val sse = searchStack[plyFromRoot]
 
         sse.move = Move.NULL_MOVE
-        sse.movingPieceType = PieceType.NONE
+        sse.movingPiece = Piece.NONE
         sse.searchedMoveCount = 0
         sse.staticEval = if (!inCheck)
             if (ttValue.v != 0L && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
@@ -248,7 +248,7 @@ class Engine {
             val move = moveGen.nextMove()
             if (move.isNull()) break
             sse.move = move
-            sse.movingPieceType = position.pieces[move.src.v].type
+            sse.movingPiece = position.pieces[move.src.v]
             moveCount++
 
             if (debugMode && moveCount == 1 && (move == searchStack[plyFromRoot].killers[0] || move == searchStack[plyFromRoot].killers[1])) {
@@ -304,7 +304,7 @@ class Engine {
                 && move.promotion == PieceType.NONE
             ) {
                 reduction = LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)]
-                reduction -= historyTables.getValue(position.turn, searchStack, plyFromRoot, move, sse.movingPieceType).sign * 512
+                reduction -= historyTables.getValue(position.turn, searchStack, plyFromRoot, move, sse.movingPiece).sign * 512
 
                 if (isPV) reduction -= 2048
 
@@ -355,8 +355,8 @@ class Engine {
                     searchStack.putKiller(move, plyFromRoot)
 
                     // apply history bonus for move that caused the cutoff
-                    historyTables.update(position.turn, searchStack, plyFromRoot, move,
-                        sse.movingPieceType, min(200 * remainingDepth, 1200))
+                    historyTables.update(searchStack, plyFromRoot, move,
+                        sse.movingPiece, min(200 * remainingDepth, 1200))
 
                     // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
                     sse.forAllSearchedMoves { earlierMove ->
@@ -366,8 +366,8 @@ class Engine {
 
                         if (earlierMove.capture == Piece.NONE && earlierMove.promotion == PieceType.NONE) {
                             historyTables.update(
-                                position.turn, searchStack, plyFromRoot, earlierMove,
-                                position.pieces[earlierMove.src.v].type, -min(200 * remainingDepth, 1200)
+                                searchStack, plyFromRoot, earlierMove,
+                                position.pieces[earlierMove.src.v], -min(200 * remainingDepth, 1200)
                             )
                         }
                     }
@@ -543,7 +543,7 @@ class Engine {
             if (move.isNull()) break
 
             sse.move = move
-            sse.movingPieceType = position.pieces[move.src.v].type
+            sse.movingPiece = position.pieces[move.src.v]
 
             position.doMove(move, plyFromRoot)
             nodes += perft(plyFromRoot + 1, depth - 1)

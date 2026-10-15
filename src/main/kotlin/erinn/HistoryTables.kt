@@ -4,12 +4,12 @@ import kotlin.math.abs
 
 class HistoryTables {
     val mainTable: IntArray = IntArray(2 * 64 * 64)
-    val contTable: IntArray = IntArray(CONT_PLIES.size * 2 * 6 * 64 * 6 * 64)
+    val contTable: IntArray = IntArray(6 * 64 * 12 * 64)
 
-    fun update(color: Color, searchStack: SearchStack, plyFromRoot: Int, move: Move, movingPieceType: PieceType, bonus: Int) {
-        updateMain(color, move, bonus)
+    fun update(searchStack: SearchStack, plyFromRoot: Int, move: Move, movingPiece: Piece, bonus: Int) {
+        updateMain(movingPiece.color, move, bonus)
         if (plyFromRoot >= 1 && !searchStack[plyFromRoot - 1].move.isNull())
-            updateCont(color, searchStack[plyFromRoot - 1], move, movingPieceType, bonus)
+            updateCont(searchStack[plyFromRoot - 1], move, movingPiece, bonus)
     }
 
     fun updateMain(color: Color, move: Move, bonus: Int) {
@@ -19,18 +19,18 @@ class HistoryTables {
         mainTable[index] += clampedBonus - mainTable[index] * abs(clampedBonus) / HISTORY_MAX
     }
 
-    fun updateCont(color: Color, searchStackEntry: SearchStack.Entry, move: Move, movingPieceType: PieceType, bonus: Int) {
+    fun updateCont(searchStackEntry: SearchStack.Entry, move: Move, movingPiece: Piece, bonus: Int) {
         val clampedBonus = bonus.coerceIn(-HISTORY_MAX, HISTORY_MAX)
-        val index = getContIdx(color, searchStackEntry, move, movingPieceType)
+        val index = getContIdx(searchStackEntry, move, movingPiece)
 
         contTable[index] += clampedBonus - contTable[index] * abs(clampedBonus) / HISTORY_MAX
     }
 
-    fun getValue(color: Color, searchStack: SearchStack, plyFromRoot: Int, move: Move, movingPieceType: PieceType): Int {
+    fun getValue(color: Color, searchStack: SearchStack, plyFromRoot: Int, move: Move, movingPiece: Piece): Int {
         var value = mainTable[getMainIdx(color, move)]
 
         if (plyFromRoot >= 1 && !searchStack[plyFromRoot - 1].move.isNull())
-            value += contTable[getContIdx(color, searchStack[plyFromRoot - 1], move, movingPieceType)]
+            value += contTable[getContIdx(searchStack[plyFromRoot - 1], move, movingPiece)]
 
         return value
     }
@@ -38,8 +38,8 @@ class HistoryTables {
     private fun getMainIdx(color: Color, move: Move) =
         color.idx * 64 * 64 + move.src.v * 64 + move.dst.v
 
-    private fun getContIdx(color: Color, searchStackEntry: SearchStack.Entry, move: Move, movingPieceType: PieceType) =
-        color.idx * 6 * 64 * 6 * 64 + searchStackEntry.movingPieceType.idx * 64 * 6 * 64 + searchStackEntry.move.dst.v * 6 * 64 + movingPieceType.idx * 64 + move.dst.v
+    private fun getContIdx(searchStackEntry: SearchStack.Entry, move: Move, movingPiece: Piece) =
+        searchStackEntry.movingPiece.type.idx * 64 * 12 * 64 + searchStackEntry.move.dst.v * 12 * 64 + movingPiece.idx * 64 + move.dst.v
 
     fun age() {
         for (i in mainTable.indices) {
@@ -63,6 +63,5 @@ class HistoryTables {
 
     companion object {
         const val HISTORY_MAX = 1 shl 14
-        val CONT_PLIES = intArrayOf(1)
     }
 }

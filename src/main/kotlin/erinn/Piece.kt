@@ -67,6 +67,7 @@ value class Piece(val v: Int) { // ...cttt, t = type, c = color
 
     val type: PieceType get() = PieceType(v and 7)
     val color: Color get() = Color(v and 8)
+    val idx: Int get() = color.idx * 6 + type.idx
 
     override fun toString(): String {
         return "${SYMBOL_MAP[this]}"

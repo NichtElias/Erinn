@@ -186,7 +186,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                     quietMoves.addWithScore(
                                         move,
                                         engine.historyTables.getValue(position.turn, engine.searchStack,
-                                            plyFromRoot, move, piece.type)
+                                            plyFromRoot, move, piece)
                                     )
                                 }
                             }
@@ -208,7 +208,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                     quietMoves.addWithScore(
                                         doublePushMove,
                                         engine.historyTables.getValue(position.turn, engine.searchStack,
-                                            plyFromRoot, doublePushMove, PieceType.PAWN)
+                                            plyFromRoot, doublePushMove, Piece(position.turn, PieceType.PAWN))
                                     )
                                 }
                             }
@@ -218,7 +218,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                 quietMoves.addWithScore(
                                     singlePushMove,
                                     engine.historyTables.getValue(position.turn, engine.searchStack,
-                                        plyFromRoot, singlePushMove, PieceType.PAWN)
+                                        plyFromRoot, singlePushMove, Piece(position.turn, PieceType.PAWN))
                                 )
                             }
                         }

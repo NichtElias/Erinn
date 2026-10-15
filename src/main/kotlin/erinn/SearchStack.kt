@@ -45,7 +45,7 @@ class SearchStack {
         val killers: MoveArray = MoveArray(2)
         var staticEval: Score = Engine.INVALID_SCORE
         var move: Move = Move.NULL_MOVE
-        var movingPieceType: PieceType = PieceType.NONE
+        var movingPiece: Piece = Piece.NONE
         val searchedMoves: MoveArray = MoveArray(256)
         var searchedMoveCount: Int = 0
 
