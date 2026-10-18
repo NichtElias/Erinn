@@ -226,7 +226,7 @@ class Engine {
                 && remainingDepth <= 3
                 && !isPV
                 && !inCheck
-                && abs(alpha) < 9000
+                && abs(alpha) < MIN_MATE_SCORE
                 && staticEval + FUTILITY_MARGINS[remainingDepth] <= alpha)
 
         var alpha = alpha
@@ -239,7 +239,7 @@ class Engine {
         var firstMoveWasBestMove = true
         var firstIsKiller = false
 
-        var alphaRaised = false
+        var boundType = TranspositionTable.BOUND_UPPER // start by assuming it's an ALL node
 
         val moveGen = moveGens[plyFromRoot]
         moveGen.begin(inCheck = inCheck, hashMove = ttValue.bestMove, killerMoves = searchStack[plyFromRoot].killers, doSEE = true)
@@ -255,6 +255,7 @@ class Engine {
                 firstIsKiller = true
             }
 
+            // we count a move as a recapture if it is a captures that restores material balance after another capture
             val isRecapture = if (plyFromRoot >= 1) {
                 val prevMove = searchStack[plyFromRoot - 1].move
 
@@ -264,6 +265,7 @@ class Engine {
 
             val putsInCheck = position.putsOpponentInCheck(move)
 
+            // futility pruning
             if (futilityPruning
                 && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
@@ -273,6 +275,7 @@ class Engine {
                 continue
             }
 
+            // late move pruning
             if (!isPV
                 && !inCheck && !putsInCheck
                 && !searchStack.isKiller(move, plyFromRoot)
@@ -285,6 +288,7 @@ class Engine {
                 continue
             }
 
+            // SEE pruning
             if (!isPV
                 && !inCheck && !putsInCheck
                 && !searchStack.isKiller(move, plyFromRoot)
@@ -297,6 +301,7 @@ class Engine {
 
             var reduction = 0
 
+            // late move reductions
             if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount >= 4
                 && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
                 && !searchStack.isKiller(move, plyFromRoot)
@@ -316,11 +321,12 @@ class Engine {
             var score: Score
 
             searchStack[plyFromRoot + 1].pvLength = 0
-            score = -pvs(moveCount, plyFromRoot, remainingDepth + if (isPV && isRecapture) 1 else 0, reduction, limits, beta, alpha, isPV)
+            var newSearchDepth = remainingDepth - 1 - reduction + if (isPV && isRecapture) 1 else 0
+            score = -pvs(moveCount, plyFromRoot, newSearchDepth, limits, beta, alpha, isPV)
 
             if (reduction > 0 && score > alpha) {
-                reduction = 0
-                score = -pvs(moveCount, plyFromRoot, remainingDepth + if (isPV && isRecapture) 1 else 0, reduction, limits, beta, alpha, isPV)
+                newSearchDepth += reduction // add reduction depth back to do an unreduced search
+                score = -pvs(moveCount, plyFromRoot, newSearchDepth, limits, beta, alpha, isPV)
             }
 
             position.undoMove(move, plyFromRoot)
@@ -341,43 +347,19 @@ class Engine {
                 bestScore = score
                 if (score > alpha) {
                     alpha = score
-                    alphaRaised = true
+                    boundType = TranspositionTable.BOUND_EXACT // can only be a PV node or a CUT node now
                     bestMove = move
 
                     if (isPV) {
                         searchStack.pushPvMove(plyFromRoot, move)
                     }
-                }
-            }
 
-            if (score >= beta) {
-                if (move.capture == Piece.NONE && move.promotion == PieceType.NONE) {
-                    searchStack.putKiller(move, plyFromRoot)
+                    if (score >= beta) {
+                        boundType = TranspositionTable.BOUND_LOWER // this node is a CUT node
 
-                    // apply history bonus for move that caused the cutoff
-                    historyTables.update(searchStack, plyFromRoot, move,
-                        sse.movingPiece, min(200 * remainingDepth, 1200))
-
-                    // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
-                    sse.forAllSearchedMoves { earlierMove ->
-                        if (earlierMove == move) {
-                            return@forAllSearchedMoves
-                        }
-
-                        if (earlierMove.capture == Piece.NONE && earlierMove.promotion == PieceType.NONE) {
-                            historyTables.update(
-                                searchStack, plyFromRoot, earlierMove,
-                                position.pieces[earlierMove.src.v], -min(200 * remainingDepth, 1200)
-                            )
-                        }
+                        break
                     }
                 }
-
-                collectSearchStats(ttValue, firstMoveWasBestMove, bestMove, firstIsKiller)
-
-                tt.store(position.zobristHash, remainingDepth, position.turn,
-                    plyFromRoot, score, TranspositionTable.BOUND_LOWER, move, sse.staticEval)
-                return score
             }
         }
 
@@ -393,13 +375,34 @@ class Engine {
 
         collectSearchStats(ttValue, firstMoveWasBestMove, bestMove, firstIsKiller)
 
-        if (alphaRaised) { // PV node
-            tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BOUND_EXACT, bestMove, sse.staticEval)
-        } else { // all node
-            tt.store(position.zobristHash, remainingDepth, position.turn,
-                plyFromRoot, bestScore, TranspositionTable.BOUND_UPPER, bestMove, sse.staticEval)
+        if (boundType == TranspositionTable.BOUND_LOWER) {
+            if (bestMove.capture == Piece.NONE && bestMove.promotion == PieceType.NONE) {
+                searchStack.putKiller(bestMove, plyFromRoot)
+
+                // apply history bonus for move that caused the cutoff
+                historyTables.update(
+                    searchStack, plyFromRoot, bestMove,
+                    sse.movingPiece, min(200 * remainingDepth, 1200)
+                )
+
+                // apply history maluses for all previously searched quiet moves, because they didn't cause a cutoff
+                sse.forAllSearchedMoves { earlierMove ->
+                    if (earlierMove == bestMove) {
+                        return@forAllSearchedMoves
+                    }
+
+                    if (earlierMove.capture == Piece.NONE && earlierMove.promotion == PieceType.NONE) {
+                        historyTables.update(
+                            searchStack, plyFromRoot, earlierMove,
+                            position.pieces[earlierMove.src.v], -min(200 * remainingDepth, 1200)
+                        )
+                    }
+                }
+            }
         }
+
+        tt.store(position.zobristHash, remainingDepth, position.turn,
+            plyFromRoot, bestScore, boundType, bestMove, sse.staticEval)
 
         return bestScore
     }
@@ -408,7 +411,6 @@ class Engine {
         moveCount: Int,
         plyFromRoot: Int,
         remainingDepth: Int,
-        reduction: Int,
         limits: Limits,
         beta: Score,
         alpha: Score,
@@ -416,11 +418,11 @@ class Engine {
     ): Score {
         var score: Score
         if (moveCount == 1) {
-            score = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, isPV)
+            score = search(plyFromRoot + 1, remainingDepth, limits, -beta, -alpha, isPV)
         } else {
-            score = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -alpha - 1, -alpha, false)
+            score = search(plyFromRoot + 1, remainingDepth, limits, -alpha - 1, -alpha, false)
             if (-score > alpha && -score < beta && !stop) {
-                score = search(plyFromRoot + 1, remainingDepth - reduction - 1, limits, -beta, -alpha, true)
+                score = search(plyFromRoot + 1, remainingDepth, limits, -beta, -alpha, true)
             }
         }
         return score
