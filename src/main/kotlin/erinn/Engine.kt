@@ -305,11 +305,14 @@ class Engine {
             if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount >= 4
                 && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
                 && !searchStack.isKiller(move, plyFromRoot)
-                && move.capture == Piece.NONE
                 && move.promotion == PieceType.NONE
+                && (move.capture == Piece.NONE || !position.seeWithThreshold(move, 100))
             ) {
                 reduction = LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)]
-                reduction -= historyTables.getValue(position.turn, searchStack, plyFromRoot, move, sse.movingPiece).sign * 512
+
+                if (move.capture == Piece.NONE) {
+                    reduction -= historyTables.getValue(position.turn, searchStack, plyFromRoot, move, sse.movingPiece).sign * 512
+                }
 
                 if (isPV) reduction -= 2048
 
