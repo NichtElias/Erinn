@@ -3,8 +3,8 @@ package party.elias.erinn
 import kotlin.math.abs
 
 class HistoryTables {
-    val mainTable: IntArray = IntArray(2 * 64 * 64)
-    val contTable: IntArray = IntArray(6 * 64 * 12 * 64)
+    private val mainTable: IntArray = IntArray(2 * 64 * 64)
+    private val contTable: IntArray = IntArray(6 * 64 * 12 * 64)
 
     fun update(searchStack: SearchStack, plyFromRoot: Int, move: Move, movingPiece: Piece, bonus: Int) {
         updateMain(movingPiece.color, move, bonus)
@@ -36,10 +36,10 @@ class HistoryTables {
     }
 
     private fun getMainIdx(color: Color, move: Move) =
-        color.idx * 64 * 64 + move.src.v * 64 + move.dst.v
+        color.idx * 64 * 64 + move.src.idx * 64 + move.dst.idx
 
     private fun getContIdx(searchStackEntry: SearchStack.Entry, move: Move, movingPiece: Piece) =
-        searchStackEntry.movingPiece.type.idx * 64 * 12 * 64 + searchStackEntry.move.dst.v * 12 * 64 + movingPiece.idx * 64 + move.dst.v
+        searchStackEntry.movingPiece.type.idx * 64 * 12 * 64 + searchStackEntry.move.dst.idx * 12 * 64 + movingPiece.idx * 64 + move.dst.idx
 
     fun age() {
         for (i in mainTable.indices) {

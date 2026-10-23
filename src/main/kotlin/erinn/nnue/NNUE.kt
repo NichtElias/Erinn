@@ -33,7 +33,7 @@ object NNUE {
         7, 7, 7, 7, 7, 7, 7, 7
     )
 
-    var isInitialized = false
+    private var isInitialized = false
 
     fun init() {
 
@@ -53,7 +53,7 @@ object NNUE {
         }
     }
 
-    val accClamped = IntArray(ACC_HALF_SIZE * 2)
+    private val accClamped = IntArray(ACC_HALF_SIZE * 2)
 
     fun evaluate(accOur: IntArray, accTheir: IntArray, pieceCount: Int): Score {
 
@@ -83,16 +83,17 @@ object NNUE {
 
     /**
      * Calculates the feature index.
+     *
      * @param square the square the piece is on, needs to be mirrored for black's perspective
      * @param kingSquare the square the own king is on, needs to be mirrored for black's perspective
      * @param relativePieceColor is 0 for own pieces and 1 for opponent's pieces
      */
     fun feature(pieceType: PieceType, square: Square, kingSquare: Square, relativePieceColor: Int): Int {
-        val hm = ((kingSquare.v and 0b000100) ushr 2) * 0b000111
+        val hm = ((kingSquare.asInt() and 0b000100) ushr 2) * 0b000111
 
         return (pieceType.idx * 2 * 8 * 64
                 + relativePieceColor * 8 * 64
-                + KING_BUCKETS[kingSquare.v] * 64
-                + (square.v xor hm))
+                + KING_BUCKETS[kingSquare.idx] * 64
+                + (square.asInt() xor hm))
     }
 }

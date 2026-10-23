@@ -27,7 +27,7 @@ class Engine {
     @Volatile
     var stop: Boolean = false
 
-    var searchStartTime: TimeSource.Monotonic.ValueTimeMark = TimeSource.Monotonic.markNow()
+    private var searchStartTime: TimeSource.Monotonic.ValueTimeMark = TimeSource.Monotonic.markNow()
 
     var nodesSearched: Long = 0
 
@@ -37,16 +37,16 @@ class Engine {
 
     val accStack: AccumulatorStack = AccumulatorStack()
 
-    var printInfo: Boolean = true
+    private var printInfo: Boolean = true
 
     var debugMode: Boolean = false
 
-    var totalTTHits: Long = 0
-    var totalSearchedNodes: Long = 0
-    var ttBestMoveCount: Long = 0
-    var captureBestMoveCount: Long = 0 // capture but not tt move
-    var killerBestMoveCount: Long = 0
-    var otherBestMoveCount: Long = 0
+    private var totalTTHits: Long = 0
+    private var totalSearchedNodes: Long = 0
+    private var ttBestMoveCount: Long = 0
+    private var captureBestMoveCount: Long = 0 // capture but not tt move
+    private var killerBestMoveCount: Long = 0
+    private var otherBestMoveCount: Long = 0
 
     fun evaluate(plyFromRoot: Int): Score {
         val pieceCount = position.occupiedBB.countOneBits()
@@ -81,7 +81,7 @@ class Engine {
 
         // probe transposition table
         val ttValue = tt.get(position.zobristHash)
-        if (ttValue.v != 0L) {
+        if (!ttValue.isNull()) {
             // TT cutoffs
             val adjustedScore = ttValue.getAdjustedScore(position.turn, plyFromRoot)
             if (ttValue.checkBounds(adjustedScore, alpha, beta)) {
@@ -89,7 +89,7 @@ class Engine {
             }
         }
 
-        val staticEval = if (ttValue.v != 0L && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
+        val staticEval = if (!ttValue.isNull() && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
         var bestScore = staticEval
 
         if (bestScore >= beta) return bestScore
@@ -145,7 +145,7 @@ class Engine {
         // probe transposition table
         val ttValue = tt.get(position.zobristHash)
         if (!isPV
-            && ttValue.v != 0L
+            && !ttValue.isNull()
             && plyFromRoot != 0
             && ttValue.draft >= remainingDepth
         ) {
@@ -171,7 +171,7 @@ class Engine {
         sse.movingPiece = Piece.NONE
         sse.searchedMoveCount = 0
         sse.staticEval = if (!inCheck)
-            if (ttValue.v != 0L && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
+            if (!ttValue.isNull() && ttValue.staticEval != INVALID_SCORE) ttValue.staticEval else evaluate(plyFromRoot)
         else INVALID_SCORE
 
         val staticEval = sse.staticEval
@@ -248,7 +248,7 @@ class Engine {
             val move = moveGen.nextMove()
             if (move.isNull()) break
             sse.move = move
-            sse.movingPiece = position.pieces[move.src.v]
+            sse.movingPiece = position.pieces[move.src.idx]
             moveCount++
 
             if (debugMode && moveCount == 1 && (move == searchStack[plyFromRoot].killers[0] || move == searchStack[plyFromRoot].killers[1])) {
@@ -397,7 +397,7 @@ class Engine {
                     if (earlierMove.capture == Piece.NONE && earlierMove.promotion == PieceType.NONE) {
                         historyTables.update(
                             searchStack, plyFromRoot, earlierMove,
-                            position.pieces[earlierMove.src.v], -min(200 * remainingDepth, 1200)
+                            position.pieces[earlierMove.src.idx], -min(200 * remainingDepth, 1200)
                         )
                     }
                 }
@@ -511,9 +511,9 @@ class Engine {
     ) {
         if (debugMode) {
             totalSearchedNodes++
-            if (ttValue.v != 0L) totalTTHits++
+            if (!ttValue.isNull()) totalTTHits++
             if (firstMoveWasBestMove) {
-                if (ttValue.v != 0L && ttValue.bestMove == bestMove) {
+                if (!ttValue.isNull() && ttValue.bestMove == bestMove) {
                     ttBestMoveCount++
                 } else if (bestMove.capture != Piece.NONE) {
                     captureBestMoveCount++
@@ -548,7 +548,7 @@ class Engine {
             if (move.isNull()) break
 
             sse.move = move
-            sse.movingPiece = position.pieces[move.src.v]
+            sse.movingPiece = position.pieces[move.src.idx]
 
             position.doMove(move, plyFromRoot)
             nodes += perft(plyFromRoot + 1, depth - 1)
@@ -579,7 +579,7 @@ class Engine {
         return results
     }
 
-    fun genEvalPosFromSelfPlayGame(searchNodes: Long, file: File): Int {
+    private fun genEvalPosFromSelfPlayGame(searchNodes: Long, file: File): Int {
 
         val positions: ArrayList<ByteArray> = ArrayList()
         var result: Float
@@ -699,9 +699,9 @@ class Engine {
         const val DRAW_SCORE: Score = 0
         const val INVALID_SCORE: Score = -0x8000
 
-        val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
+        private val FUTILITY_MARGINS = intArrayOf(0, 200, 300, 500)
 
-        val LMR_TABLE = IntArray(MAX_SEARCH_PLY * 128)
+        private val LMR_TABLE = IntArray(MAX_SEARCH_PLY * 128)
 
         init {
             for (depth in 1..<MAX_SEARCH_PLY) {

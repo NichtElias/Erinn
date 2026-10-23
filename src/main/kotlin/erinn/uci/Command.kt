@@ -1,7 +1,7 @@
 package party.elias.erinn.uci
 
 class Command(cmdString: String) {
-    val tokens: List<String> = cmdString.trim().split(" ")
+    private val tokens: List<String> = cmdString.trim().split(" ")
     val command: String = tokens.getOrNull(0) ?: ""
     val args: List<String> = if (tokens.isNotEmpty()) tokens.subList(1, tokens.size) else emptyList()
 

@@ -1,7 +1,7 @@
 package party.elias.erinn
 
 class SearchStack {
-    val stack: Array<Entry> = Array(Engine.MAX_SEARCH_PLY) { Entry() }
+    private val stack: Array<Entry> = Array(Engine.MAX_SEARCH_PLY) { Entry() }
 
     operator fun get(plyIndex: Int): Entry = stack[plyIndex]
 

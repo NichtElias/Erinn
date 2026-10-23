@@ -44,7 +44,7 @@ abstract class Accumulator {
         dirty = false
     }
 
-    fun addSubDiff(from: Accumulator) {
+    private fun addSubDiff(from: Accumulator) {
         val fromContents = from.contents
 
         val addFeatureWeights = NNUE.ftWeights[diff.addFeatures[0]]
@@ -55,7 +55,7 @@ abstract class Accumulator {
         }
     }
 
-    fun addSubSubDiff(from: Accumulator) {
+    private fun addSubSubDiff(from: Accumulator) {
         val fromContents = from.contents
 
         val addFeatureWeights = NNUE.ftWeights[diff.addFeatures[0]]
@@ -67,7 +67,7 @@ abstract class Accumulator {
         }
     }
 
-    fun addAddSubSubDiff(from: Accumulator) {
+    private fun addAddSubSubDiff(from: Accumulator) {
         val fromContents = from.contents
 
         val add0FeatureWeights = NNUE.ftWeights[diff.addFeatures[0]]

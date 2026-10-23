@@ -3,11 +3,11 @@ package party.elias.erinn.uci
 class Option<T>(
     val name: String,
     val type: Type<T>,
-    val default: T,
-    val min: T? = null,
-    val max: T? = null,
-    val vars: List<T>? = null,
-    val changeListener: (T) -> Unit = {}
+    private val default: T,
+    private val min: T? = null,
+    private val max: T? = null,
+    private val vars: List<T>? = null,
+    private val changeListener: (T) -> Unit = {}
 ) {
     var value = default
 

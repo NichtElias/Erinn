@@ -1,16 +1,22 @@
 package party.elias.erinn
 
 @JvmInline
-value class Square(val v: Int) {
+value class Square(private val v: Int) {
     constructor(rank: Int, file: Int) : this(rank * 8 + file)
     val rank: Int get() = v ushr 3
     val file: Int get() = v and 7
     val mirror: Square get() = Square(v xor 0b111000)
     val parity: Int get() = (rank + file) % 2 // 0 means dark square, 1 means light square
+    val idx: Int get() = v
+
+    fun asInt(): Int = v
 
     fun bb(): Bitboard {
         return 1L shl v
     }
+
+    fun withOffset(offset: Int): Square = Square(v + offset)
+    fun withOffset(offset: Square): Square = Square(v + offset.v)
 
     fun toUci(): String {
         val file = 'a' + file
@@ -71,6 +77,6 @@ value class SquareArray(val array: IntArray) {
 
     operator fun get(index: Int): Square = Square(array[index])
     operator fun set(index: Int, square: Square) {
-        array[index] = square.v
+        array[index] = square.asInt()
     }
 }

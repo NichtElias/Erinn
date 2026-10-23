@@ -1,9 +1,11 @@
 package party.elias.erinn
 
 @JvmInline
-value class Color(val v: Int) { // WHITE = 0b1000, BLACK = 0b0000
+value class Color(private val v: Int) { // WHITE = 0b1000, BLACK = 0b0000
     val opponent: Color get() = Color(v.inv() and 8)
     val idx: Int get() = v ushr 3
+
+    fun asInt(): Int = v
 
     fun backRank(): Int = if (this == BLACK) 7 else 0
     fun pawnStartingRank(): Int = if (this == BLACK) 6 else 1
@@ -23,9 +25,11 @@ value class Color(val v: Int) { // WHITE = 0b1000, BLACK = 0b0000
 }
 
 @JvmInline
-value class PieceType(val v: Int) { // ...0ttt
+value class PieceType(private val v: Int) { // ...0ttt
     val name: String get() = NAMES[v]
     val idx: Int get() = v
+
+    fun asInt(): Int = v
 
     fun isSliding(): Boolean {
         return (v == BISHOP.idx
@@ -62,12 +66,14 @@ value class PieceType(val v: Int) { // ...0ttt
 }
 
 @JvmInline
-value class Piece(val v: Int) { // ...cttt, t = type, c = color
-    constructor(color: Color, pieceType: PieceType) : this(color.v or pieceType.v)
+value class Piece(private val v: Int) { // ...cttt, t = type, c = color
+    constructor(color: Color, pieceType: PieceType) : this(color.asInt() or pieceType.asInt())
 
     val type: PieceType get() = PieceType(v and 7)
     val color: Color get() = Color(v and 8)
     val idx: Int get() = color.idx * 6 + type.idx
+
+    fun asInt(): Int = v
 
     override fun toString(): String {
         return "${SYMBOL_MAP[this]}"
@@ -104,10 +110,10 @@ value class Piece(val v: Int) { // ...cttt, t = type, c = color
 
 @JvmInline
 value class PieceArray(val array: IntArray) {
-    constructor() : this(IntArray(64) { Piece.NONE.v })
+    constructor() : this(IntArray(64) { Piece.NONE.asInt() })
 
     operator fun get(index: Int): Piece = Piece(array[index])
     operator fun set(index: Int, piece: Piece) {
-        array[index] = piece.v
+        array[index] = piece.asInt()
     }
 }

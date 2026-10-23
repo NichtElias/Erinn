@@ -6,7 +6,7 @@ typealias BoundType = Short
 
 class TranspositionTable(val capacity: Int) {
 
-    val entries: LongArray = LongArray(capacity * 2)
+    private val entries: LongArray = LongArray(capacity * 2)
 
     fun store(key: Long, draft: Int, perspective: Color, plyFromRoot: Int, score: Score, boundType: BoundType, bestMove: Move, staticEval: Score) {
         val index = (key.toULong() % capacity.toUInt()).toInt() * 2
@@ -22,7 +22,7 @@ class TranspositionTable(val capacity: Int) {
         )
 
         entries[index] = key
-        entries[index + 1] = newValue.v
+        entries[index + 1] = newValue.asLong()
     }
 
     fun get(key: Long): TTValue {
@@ -66,7 +66,7 @@ class TranspositionTable(val capacity: Int) {
         val HASH_EP_FILE: LongArray = LongArray(8)
 
         fun pieceHash(piece: Piece, square: Square): Long {
-            return HASH_PIECES[square.v * 12 + piece.color.idx * 6 + piece.type.idx]
+            return HASH_PIECES[square.idx * 12 + piece.color.idx * 6 + piece.type.idx]
         }
 
         fun castlingHash(castlingRights: Bitboard): Long {
@@ -82,7 +82,7 @@ class TranspositionTable(val capacity: Int) {
         /**
          * Works for both adjusting scores that go into the table and scores that come out of it.
          * Just pass `plyFromRoot` normally when inserting and `-plyFromRoot` when reading.
-         * */
+         */
         private fun adjustScore(score: Score, perspective: Color, plyFromRoot: Int): Score {
             var score = score
 
@@ -118,12 +118,16 @@ class TranspositionTable(val capacity: Int) {
     }
 
     @JvmInline
-    value class TTValue(val v: Long) {
+    value class TTValue(private val v: Long) {
         val bestMove: Move get() = Move((v and 0x3FFFFF).toInt())
         val score: Score get() = ((v ushr 22) and 0xFFFF).toShort().toInt()
         val draft: Short get() = ((v ushr 38) and 0xFF).toShort()
         val boundType: BoundType get() = ((v ushr 46) and 0b11).toShort()
         val staticEval: Score get() = ((v ushr 48) and 0xFFFF).toShort().toInt()
+
+        fun asLong(): Long = v
+
+        fun isNull(): Boolean = v == 0L
 
         constructor(
             bestMove: Move, score: Score, draft: Int, boundType: BoundType, staticEval: Score

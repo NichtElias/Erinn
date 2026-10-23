@@ -9,9 +9,13 @@ class AccumulatorStack {
         stack[0].fullRefreshFromBoard(board)
     }
 
-    // returns true if it's a king move and full refresh is required
+    /**
+     * Updates the AccumulatorStack with the state before a move is made.
+     *
+     * @return true if it's a king move and full refresh is required, else false
+     */
     fun preDoMove(plyFromRoot: Int, move: Move, board: Board): Boolean {
-        val movingPiece = board.pieces[move.src.v]
+        val movingPiece = board.pieces[move.src.idx]
         val whiteKingSquare = board.kingSquares[Color.WHITE.idx]
         val blackKingSquare = board.kingSquares[Color.BLACK.idx]
 
@@ -59,8 +63,8 @@ class AccumulatorStack {
             }
 
             // we did a king move, that means the accumulator of the color that played the move needs a full refresh
-            return ((move.src.v xor move.dst.v) and 0b000100) != 0 || (if (board.turn == Color.WHITE) NNUE.KING_BUCKETS[move.src.v] != NNUE.KING_BUCKETS[move.dst.v]
-                else NNUE.KING_BUCKETS[move.src.mirror.v] != NNUE.KING_BUCKETS[move.dst.mirror.v])
+            return ((move.src.asInt() xor move.dst.asInt()) and 0b000100) != 0 || (if (board.turn == Color.WHITE) NNUE.KING_BUCKETS[move.src.idx] != NNUE.KING_BUCKETS[move.dst.idx]
+                else NNUE.KING_BUCKETS[move.src.mirror.idx] != NNUE.KING_BUCKETS[move.dst.mirror.idx])
         }
 
         return false

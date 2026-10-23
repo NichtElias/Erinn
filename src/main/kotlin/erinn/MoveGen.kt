@@ -1,20 +1,20 @@
 package party.elias.erinn
 
 class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
-    var stage: Stage = Stage.HASH
+    private var stage: Stage = Stage.HASH
 
-    val quietMoves: ScoredMoveContainer = ScoredMoveContainer(192)
-    val badQuietMoves: ScoredMoveContainer = ScoredMoveContainer(192)
-    val goodCaptures: ScoredMoveContainer = ScoredMoveContainer(32)
-    val badCaptures: ScoredMoveContainer = ScoredMoveContainer(16)
-    var currentMoveContainer: ScoredMoveContainer = quietMoves
-    var finished: Boolean = false
+    private val quietMoves: ScoredMoveContainer = ScoredMoveContainer(192)
+    private val badQuietMoves: ScoredMoveContainer = ScoredMoveContainer(192)
+    private val goodCaptures: ScoredMoveContainer = ScoredMoveContainer(32)
+    private val badCaptures: ScoredMoveContainer = ScoredMoveContainer(16)
+    private var currentMoveContainer: ScoredMoveContainer = quietMoves
+    private var finished: Boolean = false
 
-    var hashMove: Move = Move.NULL_MOVE
-    var killerMoves: MoveArray? = null
-    var genQuiets: Boolean = true
-    var inCheck: Boolean = false
-    var doSEE: Boolean = false
+    private var hashMove: Move = Move.NULL_MOVE
+    private var killerMoves: MoveArray? = null
+    private var genQuiets: Boolean = true
+    private var inCheck: Boolean = false
+    private var doSEE: Boolean = false
 
     fun begin(genQuiets: Boolean = true, inCheck: Boolean = false, hashMove: Move = Move.NULL_MOVE, killerMoves: MoveArray? = null, doSEE: Boolean = false) {
         stage = Stage.HASH
@@ -78,8 +78,8 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                         position.piecesBB[PieceType.PAWN.idx] and position.colorsBB[position.turn.idx]
                                 and Bitboards.RANKS[position.turn.opponent.pawnStartingRank()]
                     ) { src ->
-                        val front = Square(src.v + PAWN_DIRECTIONS[position.turn.idx])
-                        if (position.pieces[front.v] == Piece.NONE) {
+                        val front = src.withOffset(PAWN_DIRECTIONS[position.turn.idx])
+                        if (position.pieces[front.idx] == Piece.NONE) {
                             val singlePushMove = Move(src, front, Piece.NONE)
                             if (!position.putsCurrentPlayerInCheck(singlePushMove))
                                 singlePushMove.forPromotionVariants { m ->
@@ -92,7 +92,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                 Stage.CAPTURES_INIT -> {
                     var attacks = 0L
                     Bitboards.forAllSquares(position.colorsBB[position.turn.idx]) { square ->
-                        val piece = position.pieces[square.v]
+                        val piece = position.pieces[square.idx]
                         attacks = attacks or position.attacksOf(square, piece.type, piece.color)
                     }
                     attacks = attacks and position.colorsBB[position.turn.opponent.idx]
@@ -103,7 +103,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                         // squeeze in en passant at the front of all the other x takes pawn captures
                         if (victimType == PieceType.PAWN.idx) {
                             if (position.epSquare != Square(-1)) {
-                                Bitboards.forAllSquares(INDEXED_PAWN_ATTACKS[position.turn.opponent.idx][position.epSquare.v] and
+                                Bitboards.forAllSquares(INDEXED_PAWN_ATTACKS[position.turn.opponent.idx][position.epSquare.idx] and
                                         position.piecesBB[PieceType.PAWN.idx] and position.colorsBB[position.turn.idx]
                                 ) { src ->
                                     val epMove = Move(src, position.epSquare, Piece(position.turn.opponent, PieceType.PAWN), isEp = true)
@@ -122,7 +122,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                             val aggressorBB = position.attackersTargeting(victimSquare, position.turn)
                             for (aggressorType in LVA_PIECES) {
                                 Bitboards.forAllSquares(position.piecesBB[aggressorType] and aggressorBB) { aggressorSquare ->
-                                    val captureMove = Move(aggressorSquare, victimSquare, position.pieces[victimSquare.v])
+                                    val captureMove = Move(aggressorSquare, victimSquare, position.pieces[victimSquare.idx])
 
                                     if (!position.putsCurrentPlayerInCheck(captureMove)) {
                                         if (aggressorType == PieceType.PAWN.idx && victimSquare.rank == position.turn.opponent.backRank()) {
@@ -176,7 +176,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
 
                     // generate missing non-captures
                     Bitboards.forAllSquares(position.colorsBB[position.turn.idx]) { src ->
-                        val piece = position.pieces[src.v]
+                        val piece = position.pieces[src.idx]
                         if (piece.type != PieceType.PAWN) {
                             Bitboards.forAllSquares(
                                 position.attacksOf(src, piece.type, piece.color) and position.occupiedBB.inv()
@@ -196,13 +196,13 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                     // generate pawn non-capture non-promotion moves
                     Bitboards.forAllSquares(position.piecesBB[PieceType.PAWN.idx] and position.colorsBB[position.turn.idx]
                             and Bitboards.PAWN_NON_PROMOTION_AREAS[position.turn.idx]) { src ->
-                        val front = Square(src.v + PAWN_DIRECTIONS[position.turn.idx])
-                        if (position.pieces[front.v] == Piece.NONE) {
+                        val front = src.withOffset(PAWN_DIRECTIONS[position.turn.idx])
+                        if (position.pieces[front.idx] == Piece.NONE) {
                             val singlePushMove = Move(src, front, Piece.NONE)
 
                             // generate double push
-                            val doublePushSquare = Square(src.v + 2 * PAWN_DIRECTIONS[position.turn.idx])
-                            if (src.rank == position.turn.pawnStartingRank() && position.pieces[doublePushSquare.v] == Piece.NONE) {
+                            val doublePushSquare = src.withOffset(2 * PAWN_DIRECTIONS[position.turn.idx])
+                            if (src.rank == position.turn.pawnStartingRank() && position.pieces[doublePushSquare.idx] == Piece.NONE) {
                                 val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
                                 if (!position.putsCurrentPlayerInCheck(doublePushMove)) {
                                     quietMoves.addWithScore(
@@ -268,14 +268,14 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
             // capture the checker via en passant
             if (position.epSquare != Square(-1) && position.epSquare.enPassantActualCapture() == checkerSq) {
                 val epAttackers: Bitboard =
-                    (INDEXED_PAWN_ATTACKS[position.turn.opponent.idx][position.epSquare.v]
+                    (INDEXED_PAWN_ATTACKS[position.turn.opponent.idx][position.epSquare.idx]
                             and position.piecesBB[PieceType.PAWN.idx] and position.colorsBB[position.turn.idx])
 
                 Bitboards.forAllSquares(epAttackers) { src ->
                     // can only use non-pinned pieces
                     if (src.bb() and position.kingProtectors[position.turn.idx] == 0L) {
                         currentMoveContainer.add(
-                            Move(src, position.epSquare, position.pieces[checkerSq.v], isEp = true)
+                            Move(src, position.epSquare, position.pieces[checkerSq.idx], isEp = true)
                         )
                     }
                 }
@@ -287,11 +287,11 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                 // can only use non-pinned pieces and don't use the king, he'll have his chance when generating the king moves
                 if (src.bb() and position.kingProtectors[position.turn.idx] == 0L && src != kingSquare) {
 
-                    val captureMove = Move(src, checkerSq, position.pieces[checkerSq.v])
+                    val captureMove = Move(src, checkerSq, position.pieces[checkerSq.idx])
 
                     // if we're moving a pawn to the last rank, we promote
                     if (position.turn.opponent.pawnStartingRank() == src.rank // our pawn moving from opponent's starting rank, means we reach the last rank
-                        && position.pieces[src.v].type == PieceType.PAWN) {
+                        && position.pieces[src.idx].type == PieceType.PAWN) {
                         captureMove.forPromotionVariants { m ->
                             currentMoveContainer.add(m)
                         }
@@ -302,7 +302,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
             }
 
             // interpose a piece
-            if (position.pieces[checkerSq.v].type.isSliding()) {
+            if (position.pieces[checkerSq.idx].type.isSliding()) {
                 Bitboards.forAllSquares(Bitboards.between(kingSquare, checkerSq)) { dst ->
                     Bitboards.forAllSquares(position.moversTargeting(dst, position.turn)) { src ->
                         // can only use non-pinned pieces and not the king
@@ -312,7 +312,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
 
                             // if we're moving a pawn to the last rank, we promote
                             if (position.turn.opponent.pawnStartingRank() == src.rank // our pawn moving from opponent's starting rank, means we reach the last rank
-                                && position.pieces[src.v].type == PieceType.PAWN) {
+                                && position.pieces[src.idx].type == PieceType.PAWN) {
                                 interposeMove.forPromotionVariants { m ->
                                     currentMoveContainer.add(m)
                                 }
@@ -326,7 +326,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
         }
 
         // generate king evasion moves
-        val kingEvasionSquares = (KING_ATTACKS[kingSquare.v]
+        val kingEvasionSquares = (KING_ATTACKS[kingSquare.idx]
                 and position.colorsBB[position.turn.idx].inv())
 
         Bitboards.forAllSquares(kingEvasionSquares) { dst ->
@@ -337,11 +337,11 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                     position.occupiedBB and kingSquare.bb().inv()
                 )
             )
-                currentMoveContainer.add(Move(kingSquare, dst, position.pieces[dst.v]))
+                currentMoveContainer.add(Move(kingSquare, dst, position.pieces[dst.idx]))
         }
     }
 
-    fun nextStage() {
+    private fun nextStage() {
         if (stage.hasNext()) {
             stage = stage.next()
             return
@@ -447,7 +447,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
         }
     }
 
-    enum class Stage(val sorted: Boolean = false) {
+    private enum class Stage(val sorted: Boolean = false) {
         HASH,
         CAPTURES_INIT,
         GOOD_CAPTURES,
@@ -469,7 +469,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
         }
     }
 
-    class ScoredMoveContainer(
+    private class ScoredMoveContainer(
         val moves: MoveArray,
         val scores: IntArray,
         var size: Int,

@@ -18,8 +18,8 @@ object Magic {
     val BISHOP_BLOCKER_MASKS: LongArray = LongArray(64)
     val ROOK_BLOCKER_MASKS: LongArray = LongArray(64)
 
-    val BISHOP_MOVES: Array<LongArray?> = arrayOfNulls<LongArray>(64)
-    val ROOK_MOVES: Array<LongArray?> = arrayOfNulls<LongArray>(64)
+    val BISHOP_MOVES: Array<LongArray?> = arrayOfNulls(64)
+    val ROOK_MOVES: Array<LongArray?> = arrayOfNulls(64)
 
     private fun oppositeEdges(square: Square): Long {
         val rank = square.rank

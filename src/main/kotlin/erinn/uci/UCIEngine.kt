@@ -13,7 +13,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.DurationUnit
 
 object UCIEngine {
-    val searchScope = CoroutineScope(Dispatchers.Default + Job())
+    private val searchScope = CoroutineScope(Dispatchers.Default + Job())
     val engine: Engine = Engine()
     val options: ArrayList<Option<*>> = ArrayList()
     var running = true

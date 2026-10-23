@@ -1,5 +1,15 @@
 package party.elias.erinn
 
+/**
+ * bit layout (22 bits):
+ * XXXXXXXXXX EEE PPP CCCC DDDDDD SSSSSS
+ * - S = source square
+ * - D = destination square
+ * - C = captured piece, Piece.NONE if no capture
+ * - P = piece type promoted to, PieceType.NONE if no promotion
+ * - E = castling / en passant, 0-3 are valid castling indices, highest bit is set when not castling, 4 is en passant
+ * - X = unused
+ */
 @JvmInline
 value class Move(val v: Int) {
     val src: Square get() = Square(v and 0b111111)
@@ -9,26 +19,17 @@ value class Move(val v: Int) {
     val isEp: Boolean get() = ((v ushr 19) and 0b111) == 0b100
     val castle: Int get() = if (v and (0b100 shl 19) == 0) ((v ushr 19) and 0b111) else -1
 
-    // bit layout (22 bits):
-    // XXXXXXXXXX EEE PPP CCCC DDDDDD SSSSSS
-    // S = source square
-    // D = destination square
-    // C = captured piece, Piece.NONE if no capture
-    // P = piece type promoted to, PieceType.NONE if no promotion
-    // E = castling / en passant, 0-3 are valid castling indices, highest bit is set when not castling, 4 is en passant
-    // X = unused
-
     constructor(src: Square, dst: Square, capture: Piece, promotion: PieceType = PieceType.NONE, isEp: Boolean = false, castle: Int = -1) : this(
-        (src.v and 0b111111)
-                or ((dst.v and 0b111111) shl 6)
-                or ((capture.v and 0b1111) shl 12)
-                or ((promotion.v and 0b111) shl 16)
+        (src.asInt() and 0b111111)
+                or ((dst.asInt() and 0b111111) shl 6)
+                or ((capture.asInt() and 0b1111) shl 12)
+                or ((promotion.asInt() and 0b111) shl 16)
                 or (if (isEp) 0b100 shl 19 else ((castle and 0b111) shl 19))
     )
 
     inline fun forPromotionVariants(f: (Move) -> Unit) {
         for (pp in PieceType.PROMOTABLE_TO) {
-            f(Move((v and (0b111 shl 16).inv()) or ((pp.v and 0b111) shl 16)))
+            f(Move((v and (0b111 shl 16).inv()) or ((pp.asInt() and 0b111) shl 16)))
         }
     }
 
@@ -55,16 +56,16 @@ value class Move(val v: Int) {
             val dst = Square.parseUci(uciMove.substring(2..3))
             val promotion: PieceType = if (uciMove.length > 4) Piece.fromSymbol(uciMove[4]).type else PieceType.NONE
 
-            val movingPiece = position.pieces[src.v]
+            val movingPiece = position.pieces[src.idx]
 
             val isEp = dst == position.epSquare && movingPiece.type == PieceType.PAWN
-            val capture = position.pieces[(if (isEp) dst.enPassantActualCapture() else dst).v]
+            val capture = position.pieces[(if (isEp) dst.enPassantActualCapture() else dst).idx]
 
             var castle = -1
 
             for (i in 0..3) {
                 if (src == Square.KING_STARTS[i / 2]
-                    && position.pieces[src.v].type == PieceType.KING
+                    && position.pieces[src.idx].type == PieceType.KING
                     && dst == Square.CASTLING_TARGET_SQUARES[i]
                 ) {
                     castle = i
