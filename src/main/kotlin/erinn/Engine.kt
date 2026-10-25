@@ -251,6 +251,8 @@ class Engine {
             sse.movingPiece = position.pieces[move.src.idx]
             moveCount++
 
+            val isQuietMove = move.capture == Piece.NONE && move.promotion == PieceType.NONE
+
             if (debugMode && moveCount == 1 && (move == searchStack[plyFromRoot].killers[0] || move == searchStack[plyFromRoot].killers[1])) {
                 firstIsKiller = true
             }
@@ -267,8 +269,7 @@ class Engine {
 
             // futility pruning
             if (futilityPruning
-                && move.capture == Piece.NONE
-                && move.promotion == PieceType.NONE
+                && isQuietMove
                 && !putsInCheck
             ) {
                 prunedMoves++
@@ -279,8 +280,7 @@ class Engine {
             if (!isPV
                 && !inCheck && !putsInCheck
                 && !searchStack.isKiller(move, plyFromRoot)
-                && move.capture == Piece.NONE
-                && move.promotion == PieceType.NONE
+                && isQuietMove
                 && remainingDepth <= 3
                 && moveCount >= 4 + 4 * remainingDepth
             ) {
@@ -305,12 +305,11 @@ class Engine {
             if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount >= 4
                 && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
                 && !searchStack.isKiller(move, plyFromRoot)
-                && move.promotion == PieceType.NONE
-                && (move.capture == Piece.NONE || !position.seeWithThreshold(move, 100))
+                && (isQuietMove || !position.seeWithThreshold(move, 100))
             ) {
                 reduction = LMR_TABLE[remainingDepth * 128 + min(moveCount, 127)]
 
-                if (move.capture == Piece.NONE) {
+                if (isQuietMove) {
                     reduction -= historyTables.getValue(position.turn, searchStack, plyFromRoot, move, sse.movingPiece).sign * 512
                 }
 
