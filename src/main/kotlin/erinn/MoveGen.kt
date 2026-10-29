@@ -1,5 +1,7 @@
 package party.elias.erinn
 
+import kotlin.math.max
+
 class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
     private var stage: Stage = Stage.HASH
 
@@ -44,12 +46,13 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
 
                 val move = currentMoveContainer.selectMove(stage.sorted)
 
-                if (stage == Stage.GOOD_QUIET && currentMoveContainer.scores[currentMoveContainer.index - 1] < GOOD_QUIET_THRESHOLD) {
+                if (stage == Stage.GOOD_QUIET && currentMoveContainer.getScore(currentMoveContainer.index - 1) < GOOD_QUIET_THRESHOLD) {
                     val firstBadMoveIndex = currentMoveContainer.index - 1
                     currentMoveContainer.moves.array.copyInto(badQuietMoves.moves.array, startIndex = firstBadMoveIndex, endIndex = currentMoveContainer.size)
                     currentMoveContainer.scores.copyInto(badQuietMoves.scores, startIndex = firstBadMoveIndex, endIndex = currentMoveContainer.size)
                     badQuietMoves.size = currentMoveContainer.size - firstBadMoveIndex
                     badQuietMoves.index = 0
+                    badQuietMoves.reindex()
                     nextStage()
                 } else {
                     if (!currentMoveContainer.hasNext()) {
@@ -494,20 +497,30 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
             moves[size++] = move
         }
 
+        /**
+         * Puts move and associated score into the container.
+         *
+         * The score has to be in the range [-2^24,2^24)
+         */
         fun addWithScore(move: Move, score: Int) {
-            scores[size] = score
+            scores[size] = (score shl 8) or size
             moves[size++] = move
+        }
+
+        fun getScore(scoreIndex: Int): Int {
+            return (scores[scoreIndex] shr 8)
         }
 
         fun selectMove(sort: Boolean): Move {
             if (sort) {
                 // find best remaining move
-                var maxScoreIndex: Int = index
+                var maxElement: Int = scores[index]
                 for (i in (index + 1)..<size) {
-                    if (scores[i] > scores[maxScoreIndex]) {
-                        maxScoreIndex = i
-                    }
+                    maxElement = max(maxElement, scores[i])
                 }
+
+                // extract index
+                val maxScoreIndex = maxElement and 0xFF
 
                 // swap best move with current move
                 val swapScore = scores[maxScoreIndex]
@@ -516,9 +529,19 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                 moves[maxScoreIndex] = moves[index]
                 scores[index] = swapScore
                 moves[index] = swapMove
+
+                // correct indices in score array because the elements were swapped and now reside at different indices
+                scores[index] = (scores[index] and 0xFF.inv()) or index
+                scores[maxScoreIndex] = (scores[maxScoreIndex] and 0xFF.inv()) or maxScoreIndex
             }
 
             return moves[index++]
+        }
+
+        fun reindex() {
+            for (i in 0..<size) {
+                scores[i] = (scores[i] and 0xFF.inv()) or i
+            }
         }
     }
 }
