@@ -251,7 +251,7 @@ class Engine {
             sse.movingPiece = position.pieces[move.src.idx]
             moveCount++
 
-            val isQuietMove = move.capture == Piece.NONE && move.promotion == PieceType.NONE
+            val isQuietMove = !move.isCapture() && !move.isPromotion()
 
             if (debugMode && moveCount == 1 && (move == searchStack[plyFromRoot].killers[0] || move == searchStack[plyFromRoot].killers[1])) {
                 firstIsKiller = true
@@ -261,7 +261,7 @@ class Engine {
             val isRecapture = if (plyFromRoot >= 1) {
                 val prevMove = searchStack[plyFromRoot - 1].move
 
-                (!prevMove.isNull() && prevMove.capture != Piece.NONE && move.capture != Piece.NONE
+                (!prevMove.isNull() && prevMove.isCapture() && move.isCapture()
                     && position.seeWithThreshold(move, Board.SEE_MATERIAL_VALUES[prevMove.capture.type.idx]))
             } else false
 
@@ -378,7 +378,7 @@ class Engine {
         collectSearchStats(ttValue, firstMoveWasBestMove, bestMove, firstIsKiller)
 
         if (boundType == TranspositionTable.BOUND_LOWER) {
-            if (bestMove.capture == Piece.NONE && bestMove.promotion == PieceType.NONE) {
+            if (!bestMove.isCapture() && !bestMove.isPromotion()) {
                 searchStack.putKiller(bestMove, plyFromRoot)
 
                 // apply history bonus for move that caused the cutoff
@@ -393,7 +393,7 @@ class Engine {
                         return@forAllSearchedMoves
                     }
 
-                    if (earlierMove.capture == Piece.NONE && earlierMove.promotion == PieceType.NONE) {
+                    if (!earlierMove.isCapture() && !earlierMove.isPromotion()) {
                         historyTables.update(
                             searchStack, plyFromRoot, earlierMove,
                             position.pieces[earlierMove.src.idx], -min(200 * remainingDepth, 1200)
@@ -514,7 +514,7 @@ class Engine {
             if (firstMoveWasBestMove) {
                 if (!ttValue.isNull() && ttValue.bestMove == bestMove) {
                     ttBestMoveCount++
-                } else if (bestMove.capture != Piece.NONE) {
+                } else if (bestMove.isCapture()) {
                     captureBestMoveCount++
                 } else if (firstIsKiller) {
                     killerBestMoveCount++
@@ -601,7 +601,7 @@ class Engine {
             }
 
             // check for quietness
-            if (!inCheck && searchResult.move.capture == Piece.NONE) {
+            if (!inCheck && !searchResult.move.isCapture()) {
                 val binPos =
                     position.toBinaryPosition(
                         scoreToWdl(if (position.turn == Color.WHITE) searchResult.score else -searchResult.score),

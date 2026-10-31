@@ -76,7 +76,7 @@ class Board {
         halfMoves++
 
         // capture
-        if (move.capture != Piece.NONE) {
+        if (move.isCapture()) {
             var capturedSquare = move.dst
 
             if (move.isEp) {
@@ -132,7 +132,7 @@ class Board {
         remove(move.src)
 
         // put piece on dst square
-        if (move.promotion == PieceType.NONE) {
+        if (!move.isPromotion()) {
             place(movingPiece, move.dst)
         } else {
             // promote
@@ -163,7 +163,7 @@ class Board {
         fullMoves -= if (turn == Color.BLACK) 1 else 0
 
         // put piece back on src square
-        if (move.promotion == PieceType.NONE) {
+        if (!move.isPromotion()) {
             place(movedPiece, move.src)
         } else {
             // un-promote
@@ -180,7 +180,7 @@ class Board {
         }
 
         // capture
-        if (move.capture != Piece.NONE) {
+        if (move.isCapture()) {
             var capturedSquare = move.dst
 
             if (move.isEp) {
@@ -570,16 +570,16 @@ class Board {
                     && !areSquaresAttackedBy(Bitboards.CASTLING_UNATTACKED[move.castle], turn.opponent)
                     && move.src == Square.KING_STARTS[move.castle / 2]
                     && move.dst == Square.CASTLING_TARGET_SQUARES[move.castle]
-                    && move.capture == Piece.NONE)
+                    && !move.isCapture())
         }
 
         if (pieces[move.dst.idx] != move.capture) return false // check if the right piece is captured
 
-        if (piece.type == PieceType.PAWN && move.capture == Piece.NONE) {
+        if (piece.type == PieceType.PAWN && !move.isCapture()) {
             val front = move.src.withOffset(MoveGen.PAWN_DIRECTIONS[turn.idx])
             if (move.dst == front) {
                 if (move.src.rank == piece.color.opponent.pawnStartingRank()) {
-                    return move.promotion != PieceType.NONE // non-capture pawn promotion
+                    return move.isPromotion() // non-capture pawn promotion
                 }
                 return true // this is just a normal pawn push
             }
@@ -597,7 +597,7 @@ class Board {
             if (piece.type == PieceType.PAWN // this implies a capture as well, because we checked pawn and !capture earlier
                 && move.src.rank == piece.color.opponent.pawnStartingRank()
             ) {
-                return move.promotion != PieceType.NONE // capture promotion
+                return move.isPromotion() // capture promotion
             }
 
             return true // normal capture

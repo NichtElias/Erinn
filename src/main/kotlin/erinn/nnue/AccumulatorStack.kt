@@ -26,7 +26,7 @@ class AccumulatorStack {
 
         accPair.subFeature(movingPiece, move.src, whiteKingSquare, blackKingSquare)
 
-        if (move.promotion != PieceType.NONE) {
+        if (move.isPromotion()) {
             accPair.addFeature(
                 Piece(board.turn, move.promotion),
                 move.dst,
@@ -36,7 +36,7 @@ class AccumulatorStack {
             accPair.addFeature(movingPiece, move.dst, whiteKingSquare, blackKingSquare)
         }
 
-        if (move.capture != Piece.NONE) {
+        if (move.isCapture()) {
             var capturedSquare = move.dst
 
             if (move.isEp)

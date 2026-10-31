@@ -48,6 +48,14 @@ value class Move(val v: Int) {
         return v == 0
     }
 
+    fun isCapture(): Boolean {
+        return capture != Piece.NONE
+    }
+
+    fun isPromotion(): Boolean {
+        return promotion != PieceType.NONE
+    }
+
     companion object {
         val NULL_MOVE = Move(0)
 
