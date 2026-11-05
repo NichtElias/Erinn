@@ -281,8 +281,7 @@ class Engine {
                 && !inCheck && !putsInCheck
                 && !searchStack.isKiller(move, plyFromRoot)
                 && isQuietMove
-                && remainingDepth <= 3
-                && moveCount >= 4 + 4 * remainingDepth
+                && moveCount >= 4 + 3 * remainingDepth
             ) {
                 prunedMoves++
                 continue
