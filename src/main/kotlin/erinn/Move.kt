@@ -27,8 +27,8 @@ value class Move(val v: Int) {
                 or (if (isEp) 0b100 shl 19 else ((castle and 0b111) shl 19))
     )
 
-    inline fun forPromotionVariants(f: (Move) -> Unit) {
-        for (pp in PieceType.PROMOTABLE_TO) {
+    inline fun forPromotionVariants(promotionPieces: Array<PieceType>, f: (Move) -> Unit) {
+        for (pp in promotionPieces) {
             f(Move((v and (0b111 shl 16).inv()) or ((pp.asInt() and 0b111) shl 16)))
         }
     }
@@ -54,6 +54,10 @@ value class Move(val v: Int) {
 
     fun isPromotion(): Boolean {
         return promotion != PieceType.NONE
+    }
+
+    fun deltaValue(): Score {
+        return if (capture != Piece.NONE) PieceType.VALUES[capture.type.idx] else 0 + if (promotion != PieceType.NONE) PieceType.VALUES[promotion.idx] - 100 else 0
     }
 
     companion object {

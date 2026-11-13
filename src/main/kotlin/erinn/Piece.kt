@@ -50,6 +50,8 @@ value class PieceType(private val v: Int) { // ...0ttt
         val NAMES: Array<String> = arrayOf("pawn", "bishop", "knight", "rook", "queen", "king")
 
         val PROMOTABLE_TO: Array<PieceType> = arrayOf(QUEEN, KNIGHT, ROOK, BISHOP)
+        val UNDERPROMOTABLE_TO: Array<PieceType> = arrayOf(KNIGHT, ROOK, BISHOP)
+        val QUEEN_ARRAY: Array<PieceType> = arrayOf(QUEEN)
 
         val SLIDING_PIECES: IntArray = intArrayOf(BISHOP.idx, ROOK.idx, QUEEN.idx)
 

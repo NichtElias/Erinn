@@ -104,7 +104,7 @@ class Engine {
             if (move.isNull()) break
 
             // delta pruning
-            if (!inCheck && staticEval + PieceType.VALUES[move.capture.type.idx] + 210 <= alpha) {
+            if (!inCheck && staticEval + move.deltaValue() + 210 <= alpha) {
                 continue
             }
 

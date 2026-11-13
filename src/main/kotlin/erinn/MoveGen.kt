@@ -74,24 +74,6 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                     }
                 }
 
-                // non-capture promotions
-                Stage.NC_PROM -> if (genQuiets) {
-                    currentMoveContainer = quietMoves
-                    Bitboards.forAllSquares(
-                        position.piecesBB[PieceType.PAWN.idx] and position.colorsBB[position.turn.idx]
-                                and Bitboards.RANKS[position.turn.opponent.pawnStartingRank()]
-                    ) { src ->
-                        val front = src.withOffset(PAWN_DIRECTIONS[position.turn.idx])
-                        if (position.pieces[front.idx] == Piece.NONE) {
-                            val singlePushMove = Move(src, front, Piece.NONE)
-                            if (!position.putsCurrentPlayerInCheck(singlePushMove))
-                                singlePushMove.forPromotionVariants { m ->
-                                    quietMoves.add(m)
-                                }
-                        }
-                    }
-                }
-
                 Stage.CAPTURES_INIT -> {
                     var attacks = 0L
                     Bitboards.forAllSquares(position.colorsBB[position.turn.idx]) { square ->
@@ -99,6 +81,28 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                         attacks = attacks or position.attacksOf(square, piece.type, piece.color)
                     }
                     attacks = attacks and position.colorsBB[position.turn.opponent.idx]
+
+                    // generate non capture promotion moves by first generating queen promotions and
+                    // saving underpromotions for after the other captures
+                    var nonCapturePromotionPawns = 0L
+                    Bitboards.forAllSquares(
+                        position.piecesBB[PieceType.PAWN.idx] and position.colorsBB[position.turn.idx]
+                                and Bitboards.RANKS[position.turn.opponent.pawnStartingRank()]
+                    ) { src ->
+                        val front = src.withOffset(PAWN_DIRECTIONS[position.turn.idx])
+                        if (position.pieces[front.idx] == Piece.NONE) {
+                            val singlePushMove = Move(src, front, Piece.NONE)
+                            if (!position.putsCurrentPlayerInCheck(singlePushMove)) {
+                                nonCapturePromotionPawns = nonCapturePromotionPawns or src.bb()
+
+                                singlePushMove.forPromotionVariants(PieceType.QUEEN_ARRAY) { m ->
+                                    (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                        m
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     // mvv-lva capture move generation
                     for (victimType in MVV_PIECES) {
@@ -129,7 +133,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
 
                                     if (!position.putsCurrentPlayerInCheck(captureMove)) {
                                         if (aggressorType == PieceType.PAWN.idx && victimSquare.rank == position.turn.opponent.backRank()) {
-                                            captureMove.forPromotionVariants { m ->
+                                            captureMove.forPromotionVariants(PieceType.PROMOTABLE_TO) { m ->
 
                                                 (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
                                                     m
@@ -146,6 +150,19 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                             }
                         }
                     }
+
+                    // generate non capture underpromotions from previously saved bitboard of pawns that can promote
+                    Bitboards.forAllSquares(nonCapturePromotionPawns) { src ->
+                        val front = src.withOffset(PAWN_DIRECTIONS[position.turn.idx])
+                        val singlePushMove = Move(src, front, Piece.NONE)
+
+                        singlePushMove.forPromotionVariants(PieceType.UNDERPROMOTABLE_TO) { m ->
+                            (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                m
+                            )
+                        }
+                    }
+
                 }
 
                 Stage.GOOD_CAPTURES -> {
@@ -295,7 +312,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                     // if we're moving a pawn to the last rank, we promote
                     if (position.turn.opponent.pawnStartingRank() == src.rank // our pawn moving from opponent's starting rank, means we reach the last rank
                         && position.pieces[src.idx].type == PieceType.PAWN) {
-                        captureMove.forPromotionVariants { m ->
+                        captureMove.forPromotionVariants(PieceType.PROMOTABLE_TO) { m ->
                             currentMoveContainer.add(m)
                         }
                     } else {
@@ -316,7 +333,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                             // if we're moving a pawn to the last rank, we promote
                             if (position.turn.opponent.pawnStartingRank() == src.rank // our pawn moving from opponent's starting rank, means we reach the last rank
                                 && position.pieces[src.idx].type == PieceType.PAWN) {
-                                interposeMove.forPromotionVariants { m ->
+                                interposeMove.forPromotionVariants(PieceType.PROMOTABLE_TO) { m ->
                                     currentMoveContainer.add(m)
                                 }
                             } else {
@@ -455,7 +472,6 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
         CAPTURES_INIT,
         GOOD_CAPTURES,
         KILLER,
-        NC_PROM,
         GOOD_QUIET(true),
         BAD_CAPTURES,
         BAD_QUIET(true),
