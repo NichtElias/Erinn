@@ -185,7 +185,7 @@ class Engine {
         }
 
         // reverse futility pruning
-        if (!isPV && !inCheck && remainingDepth < 6) {
+        if (!isPV && !inCheck && remainingDepth < if (improving) 7 else 6) {
             if (staticEval >= beta + (if (improving) 50 else 100) * remainingDepth) {
                 return staticEval
             }
