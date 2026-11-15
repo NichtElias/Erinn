@@ -281,7 +281,7 @@ class Engine {
                 && !inCheck && !putsInCheck
                 && !searchStack.isKiller(move, plyFromRoot)
                 && isQuietMove
-                && moveCount >= 4 + 3 * remainingDepth
+                && moveCount >= 3 + 3 * remainingDepth
             ) {
                 prunedMoves++
                 continue
@@ -301,7 +301,7 @@ class Engine {
             var reduction = 0
 
             // late move reductions
-            if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount >= 4
+            if (plyFromRoot > 0 && remainingDepth >= 2 && moveCount >= 3
                 && !inCheck && !putsInCheck // we weren't in check and this move isn't putting the opponent in check
                 && !searchStack.isKiller(move, plyFromRoot)
                 && (isQuietMove || !position.seeWithThreshold(move, 100))
@@ -704,7 +704,7 @@ class Engine {
         init {
             for (depth in 1..<MAX_SEARCH_PLY) {
                 for (moveNum in 1..<128) {
-                    LMR_TABLE[depth * 128 + moveNum] = ((1F + ln(depth.toFloat()) * ln(moveNum.toFloat()) / 2.8F) * 1024F).toInt()
+                    LMR_TABLE[depth * 128 + moveNum] = ((1F + ln(depth.toFloat()) * ln(moveNum.toFloat()) / 2.7F) * 1024F).toInt()
                 }
             }
         }

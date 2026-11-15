@@ -96,9 +96,10 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                 nonCapturePromotionPawns = nonCapturePromotionPawns or src.bb()
 
                                 singlePushMove.forPromotionVariants(PieceType.QUEEN_ARRAY) { m ->
-                                    (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
-                                        m
-                                    )
+                                    if (m != hashMove)
+                                        (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                            m
+                                        )
                                 }
                             }
                         }
@@ -117,9 +118,10 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
 
                                     if (!position.putsCurrentPlayerInCheck(epMove)) {
 
-                                        (if (!doSEE || position.seeWithThreshold(epMove, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
-                                            epMove
-                                        )
+                                        if (epMove != hashMove)
+                                            (if (!doSEE || position.seeWithThreshold(epMove, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                                epMove
+                                            )
                                     }
                                 }
                             }
@@ -135,15 +137,17 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                         if (aggressorType == PieceType.PAWN.idx && victimSquare.rank == position.turn.opponent.backRank()) {
                                             captureMove.forPromotionVariants(PieceType.PROMOTABLE_TO) { m ->
 
-                                                (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
-                                                    m
-                                                )
+                                                if (m != hashMove)
+                                                    (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                                        m
+                                                    )
                                             }
                                         } else {
 
-                                            (if (!doSEE || position.seeWithThreshold(captureMove, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
-                                                captureMove
-                                            )
+                                            if (captureMove != hashMove)
+                                                (if (!doSEE || position.seeWithThreshold(captureMove, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                                    captureMove
+                                                )
                                         }
                                     }
                                 }
@@ -157,9 +161,10 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                         val singlePushMove = Move(src, front, Piece.NONE)
 
                         singlePushMove.forPromotionVariants(PieceType.UNDERPROMOTABLE_TO) { m ->
-                            (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
-                                m
-                            )
+                            if (m != hashMove)
+                                (if (!doSEE || position.seeWithThreshold(m, GOOD_CAPTURE_THRESHOLD)) goodCaptures else badCaptures).add(
+                                    m
+                                )
                         }
                     }
 
@@ -172,7 +177,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                 Stage.KILLER -> if (genQuiets && killerMoves != null) {
                     currentMoveContainer = quietMoves
                     killerMoves?.forEach { killer ->
-                        if (killer != Move.NULL_MOVE && position.isLegalMove(killer)) {
+                        if (killer != Move.NULL_MOVE && killer != hashMove && position.isLegalMove(killer)) {
 
                             quietMoves.add(killer)
                         }
@@ -190,7 +195,8 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                         ) { // cannot be illegal because we already check if king will move into check
                             val castlingMove = Move(Square.KING_STARTS[i / 2], Square.CASTLING_TARGET_SQUARES[i], Piece.NONE, castle = i)
 
-                            quietMoves.add(castlingMove)
+                            if (!isHashOrKiller(castlingMove))
+                                quietMoves.add(castlingMove)
                         }
                     }
 
@@ -202,7 +208,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                                 position.attacksOf(src, piece.type, piece.color) and position.occupiedBB.inv()
                             ) { target ->
                                 val move = Move(src, target, Piece.NONE)
-                                if (!position.putsCurrentPlayerInCheck(move)) {
+                                if (!position.putsCurrentPlayerInCheck(move) && !isHashOrKiller(move)) {
                                     quietMoves.addWithScore(
                                         move,
                                         engine.historyTables.getValue(position.turn, engine.searchStack,
@@ -224,7 +230,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                             val doublePushSquare = src.withOffset(2 * PAWN_DIRECTIONS[position.turn.idx])
                             if (src.rank == position.turn.pawnStartingRank() && position.pieces[doublePushSquare.idx] == Piece.NONE) {
                                 val doublePushMove = Move(src, doublePushSquare, Piece.NONE)
-                                if (!position.putsCurrentPlayerInCheck(doublePushMove)) {
+                                if (!position.putsCurrentPlayerInCheck(doublePushMove) && !isHashOrKiller(doublePushMove)) {
                                     quietMoves.addWithScore(
                                         doublePushMove,
                                         engine.historyTables.getValue(position.turn, engine.searchStack,
@@ -234,7 +240,7 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                             }
 
                             // generate single push
-                            if (!position.putsCurrentPlayerInCheck(singlePushMove)) {
+                            if (!position.putsCurrentPlayerInCheck(singlePushMove) && !isHashOrKiller(singlePushMove)) {
                                 quietMoves.addWithScore(
                                     singlePushMove,
                                     engine.historyTables.getValue(position.turn, engine.searchStack,
@@ -274,6 +280,10 @@ class MoveGen(var plyFromRoot: Int, val position: Board, val engine: Engine) {
                 nextStage()
             }
         }
+    }
+
+    private fun isHashOrKiller(move: Move): Boolean {
+        return move == hashMove || move == killerMoves?.get(0) || move == killerMoves?.get(1)
     }
 
     private fun genEvasionMoves() {
